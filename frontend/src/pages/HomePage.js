@@ -867,9 +867,9 @@ export default function HomePage() {
   // Fetch featured products
   useEffect(() => {
     productAPI.getAll({ featured: true, limit: 10 })
-      .then(res => setFeatured(res.data.products))
-      .catch(console.error)
-      .finally(() => setFeatLoading(false));
+  .then(res => setFeatured(res.data?.products || []))
+  .catch(() => setFeatured([]))
+  .finally(() => setFeatLoading(false));
   }, []);
 
   // ✅ Stable fetch function passed to each CategorySection (no re-creation on re-renders)
