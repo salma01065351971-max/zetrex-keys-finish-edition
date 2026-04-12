@@ -1,3 +1,4 @@
+
 # ⚡ DigiVault — Digital E-Commerce Platform
 
 A production-ready full-stack e-commerce platform for selling digital products (game codes, gift cards, eBooks). Built with React, Node.js, MongoDB, and Stripe.
@@ -355,3 +356,6 @@ stripe listen --forward-to https://your-backend.onrender.com/api/payments/webhoo
 For questions, open a GitHub issue or contact the developer.
 
 **DigiVault** — Built with ❤️ for instant digital delivery.
+=======
+# zertexkey
+>>>>>>> e0ae3a431369c99586a2d747a2e8ab8ceb32063b
