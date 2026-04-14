@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { paymentAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -167,7 +167,7 @@ const STYLES = `
   }
 `;
 
-// ── Stripe Card Form (UI فقط — هنوصّله بعدين) ─────────────────────────────
+// ── Stripe Card Form ─────────────────────────────
 function StripeForm({ onSubmit, loading, total }) {
   const [card, setCard] = useState({
     number: '', expiry: '', cvc: '', name: ''
@@ -196,10 +196,8 @@ function StripeForm({ onSubmit, loading, total }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 fade-up">
-      {/* Cardholder Name */}
       <div>
-        <label style={{ display:'block', fontSize:11, fontWeight:600,
-          color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+        <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
           Cardholder Name
         </label>
         <input
@@ -210,10 +208,8 @@ function StripeForm({ onSubmit, loading, total }) {
         />
       </div>
 
-      {/* Card Number */}
       <div>
-        <label style={{ display:'block', fontSize:11, fontWeight:600,
-          color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+        <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
           Card Number
         </label>
         <div className="card-input-group">
@@ -226,33 +222,13 @@ function StripeForm({ onSubmit, loading, total }) {
               className="card-field"
               style={{ padding:'12px 0' }}
             />
-            {/* Card Brand Icon */}
-            <div style={{ flexShrink:0, marginLeft:8 }}>
-              {card.number.startsWith('4') ? (
-                <svg width="32" height="20" viewBox="0 0 32 20" fill="none">
-                  <rect width="32" height="20" rx="3" fill="#1A1F71"/>
-                  <path d="M13.5 14H11L12.8 6H15.3L13.5 14ZM10 6L7.6 11.3L7.3 9.8L6.4 6.7C6.2 6.2 5.8 6 5.4 6H2V6.2C3 6.4 3.9 6.8 4.7 7.3L6.9 14H9.5L13.1 6H10ZM28 14H25.8L25.5 12.8H22.5L22 14H19.5L22.9 6H25.7C26.5 6 27 6.4 27.2 7.1L28 14ZM24.9 11L24.2 8.2L23.2 11H24.9ZM20 6L17.7 11.8L17.5 11L16.5 7.1C16.3 6.4 15.7 6.1 15 6H11.5L11.4 6.3C12.6 6.6 13.6 7.2 14.4 8L16.8 14H19.4L23.1 6H20Z" fill="#F7B600"/>
-                </svg>
-              ) : card.number.startsWith('5') ? (
-                <div style={{ display:'flex', gap:2 }}>
-                  <div style={{ width:16, height:16, borderRadius:'50%', background:'#EB001B', opacity:.9 }} />
-                  <div style={{ width:16, height:16, borderRadius:'50%', background:'#F79E1B', opacity:.9, marginLeft:-6 }} />
-                </div>
-              ) : (
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#3a4a2a" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              )}
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Expiry + CVC */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div>
-          <label style={{ display:'block', fontSize:11, fontWeight:600,
-            color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+          <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
             Expiry Date
           </label>
           <input
@@ -264,8 +240,7 @@ function StripeForm({ onSubmit, loading, total }) {
           />
         </div>
         <div>
-          <label style={{ display:'block', fontSize:11, fontWeight:600,
-            color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+          <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
             CVC
           </label>
           <input
@@ -278,9 +253,6 @@ function StripeForm({ onSubmit, loading, total }) {
           />
         </div>
       </div>
-
-      {/* Test Mode Notice */}
-      
 
       <button type="submit" disabled={loading} className="pay-btn pay-btn-stripe" style={{ marginTop:8 }}>
         {loading ? (
@@ -304,17 +276,15 @@ function StripeForm({ onSubmit, loading, total }) {
   );
 }
 
-// ── PayPal Form (UI فقط — هنوصّله بعدين) ──────────────────────────────────
+// ── PayPal Form ──────────────────────────────────
 function PayPalForm({ onSubmit, loading, total }) {
   return (
     <div className="fade-up space-y-4">
-      {/* PayPal Info */}
       <div style={{
         background:'rgba(0,48,135,0.08)', border:'1px solid rgba(0,156,222,0.2)',
         borderRadius:12, padding:'20px',
         display:'flex', flexDirection:'column', alignItems:'center', gap:12,
       }}>
-        {/* PayPal Logo */}
         <svg width="100" height="26" viewBox="0 0 100 26" fill="none">
           <text x="0" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#003087">Pay</text>
           <text x="36" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#009cde">Pal</text>
@@ -328,9 +298,6 @@ function PayPalForm({ onSubmit, loading, total }) {
           <span>🌍 Global</span>
         </div>
       </div>
-
-      {/* Test Mode Notice */}
-  
 
       <button
         onClick={onSubmit}
@@ -363,16 +330,29 @@ export default function CheckoutPage() {
   const { items, total, clearCart, isEmpty } = useCart();
   const navigate = useNavigate();
 
-  const [method, setMethod]       = useState('stripe'); // 'stripe' | 'paypal'
-  const [loading, setLoading]     = useState(false);
+  const [method, setMethod] = useState('stripe');
+  const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
-  const [orderId, setOrderId]     = useState('');
-  const [error, setError]         = useState('');
-const [submitted, setSubmitted]     = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [error, setError] = useState('');
+
+  // حماية ضد التكرار (خصوصاً مع React.StrictMode)
+  const initSigRef = useRef('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (isEmpty) { navigate('/cart'); return; }
+    if (isEmpty) { 
+      navigate('/cart'); 
+      return; 
+    }
+    const signature = items
+      .map(i => `${i.product?.toString() || i.productId}:${i.quantity}`)
+      .sort()
+      .join('|');
+    if (!signature || initSigRef.current === signature) return;
+    initSigRef.current = signature;
     initCheckout();
-  }, []);
+  }, [isEmpty, items, navigate]);
 
   const initCheckout = async () => {
     setInitLoading(true);
@@ -381,7 +361,7 @@ const [submitted, setSubmitted]     = useState(false);
       const res = await paymentAPI.createPaymentIntent(
         items.map(i => ({
           productId: i.product?.toString() || i.productId,
-          quantity:  i.quantity
+          quantity: i.quantity
         }))
       );
       setOrderId(res.data.orderId);
@@ -392,43 +372,44 @@ const [submitted, setSubmitted]     = useState(false);
     }
   };
 
-  // ── Stripe Handler (هنوصّله بعدين بالـ Keys) ─────────────────────────────
-const handleStripeSubmit = async (cardData) => {
-  if (submitted) return;
-  setSubmitted(true);
-  setLoading(true);
-  try {
-    await paymentAPI.confirmPayment(orderId);
-    clearCart();
-    toast.success('Payment successful! 🎉');
-    navigate(`/orders/${orderId}`);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Payment failed');
-    setSubmitted(false); // لو فشل — اسمح بالمحاولة تاني
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleStripeSubmit = async (cardData) => {
+    if (isSubmitting || !orderId) return;
 
-  // ── PayPal Handler (هنوصّله بعدين بالـ Keys) ─────────────────────────────
-const handlePayPalSubmit = async () => {
-  if (submitted) return;
-  setSubmitted(true);
-  setLoading(true);
-  try {
-    await paymentAPI.confirmPayment(orderId);
-    clearCart();
-    toast.success('PayPal payment successful! 🎉');
-    navigate(`/orders/${orderId}`);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'PayPal payment failed');
-    setSubmitted(false);
-  } finally {
-    setLoading(false);
-  }
-};
+    setIsSubmitting(true);
+    setLoading(true);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+    try {
+      await paymentAPI.confirmPayment(orderId);
+      clearCart();
+      toast.success('Payment successful! 🎉');
+      navigate(`/orders/${orderId}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Payment failed');
+    } finally {
+      setLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePayPalSubmit = async () => {
+    if (isSubmitting || !orderId) return;
+
+    setIsSubmitting(true);
+    setLoading(true);
+
+    try {
+      await paymentAPI.confirmPayment(orderId);
+      clearCart();
+      toast.success('PayPal payment successful! 🎉');
+      navigate(`/orders/${orderId}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'PayPal payment failed');
+    } finally {
+      setLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
   if (initLoading) return (
     <div style={{ minHeight:'100vh', background:'#10140c', display:'flex',
       alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16 }}>
@@ -492,7 +473,6 @@ const handlePayPalSubmit = async () => {
               </div>
 
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {/* Stripe Option */}
                 <div
                   className={`method-card ${method === 'stripe' ? 'selected' : ''}`}
                   onClick={() => setMethod('stripe')}
@@ -515,7 +495,6 @@ const handlePayPalSubmit = async () => {
                       Visa, Mastercard, American Express
                     </p>
                   </div>
-                  {/* Card Icons */}
                   <div style={{ display:'flex', gap:4, flexShrink:0 }}>
                     {['V', 'M', 'A'].map((c, i) => (
                       <div key={i} style={{
@@ -528,7 +507,6 @@ const handlePayPalSubmit = async () => {
                   </div>
                 </div>
 
-                {/* PayPal Option */}
                 <div
                   className={`method-card ${method === 'paypal' ? 'selected' : ''}`}
                   onClick={() => setMethod('paypal')}
@@ -575,14 +553,14 @@ const handlePayPalSubmit = async () => {
               {method === 'stripe' && (
                 <StripeForm
                   onSubmit={handleStripeSubmit}
-                  loading={loading}
+                  loading={loading || isSubmitting}
                   total={total}
                 />
               )}
               {method === 'paypal' && (
                 <PayPalForm
                   onSubmit={handlePayPalSubmit}
-                  loading={loading}
+                  loading={loading || isSubmitting}
                   total={total}
                 />
               )}
@@ -609,10 +587,8 @@ const handlePayPalSubmit = async () => {
               Order Summary
             </h2>
 
-            {/* Items */}
             <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
               {items.map((item, i) => {
-                const pid = item.product?.toString() || item.productId;
                 return (
                   <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ position:'relative', flexShrink:0 }}>
@@ -650,10 +626,8 @@ const handlePayPalSubmit = async () => {
               })}
             </div>
 
-            {/* Divider */}
             <div style={{ height:1, background:'#2a3420', margin:'16px 0' }} />
 
-            {/* Totals */}
             <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:13, color:'#4a5a3a' }}>Subtotal</span>
@@ -674,7 +648,6 @@ const handlePayPalSubmit = async () => {
                 fontSize:28, color:'#e8f0e0' }}>${total.toFixed(2)}</span>
             </div>
 
-            {/* What you get */}
             <div style={{
               background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.15)',
               borderRadius:10, padding:'12px 14px',
@@ -691,7 +664,6 @@ const handlePayPalSubmit = async () => {
               </ul>
             </div>
           </div>
-
         </div>
       </div>
     </div>

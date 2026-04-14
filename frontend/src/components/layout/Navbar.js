@@ -99,6 +99,8 @@ export default function Navbar() {
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-5 sm:gap-6">
 
+          
+
           {/* CART */}
           <Link to="/cart" className="relative text-[#889679] hover:text-white transition-colors">
             <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,7 +159,7 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  to="/"
+                  to="/orders"
                   onClick={() => setProfileOpen(false)}
                   className="block px-4 py-3 text-sm text-[#889679] hover:bg-[#2a3420]"
                 >

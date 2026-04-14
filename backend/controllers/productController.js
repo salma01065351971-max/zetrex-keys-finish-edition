@@ -22,7 +22,6 @@ exports.getProducts = async (req, res, next) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // ✅ SEARCH FIX
     const keyword = search || req.query.keyword;
     if (keyword) {
       query.$or = [
@@ -42,7 +41,6 @@ exports.getProducts = async (req, res, next) => {
     };
 
     const sortBy = sortOptions[sort] || { createdAt: -1 };
-
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Product.countDocuments(query);
 
@@ -93,21 +91,57 @@ exports.getProduct = async (req, res, next) => {
   }
 };
 
-// CREATE PRODUCT
+// CREATE PRODUCT (المعدلة لدعم رفع الصور والحقول الجديدة)
 exports.createProduct = async (req, res, next) => {
   try {
-    req.body.createdBy = req.user.id;
-    const product = await Product.create(req.body);
+    const productData = { ...req.body };
+    
+    // إسناد المعرف الخاص بالمستخدم الذي قام بالإنشاء
+    productData.createdBy = req.user.id;
+
+    // ✅ التحقق من وجود ملف صورة مرفوع بواسطة Multer
+    if (req.file) {
+      // نخزن المسار الذي سيتعرف عليه السيرفر لاحقاً لعرض الصورة
+      productData.image = `/uploads/${req.file.filename}`;
+    }
+
+    // ✅ معالجة الـ Tags (لأن FormData تحول المصفوفة لنص)
+    if (productData.tags && typeof productData.tags === 'string') {
+      try {
+        productData.tags = JSON.parse(productData.tags);
+      } catch (e) {
+        // إذا فشل JSON.parse، نقوم بتقسيم النص يدوياً بواسطة الفاصلة
+        productData.tags = productData.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+
+    const product = await Product.create(productData);
     res.status(201).json({ success: true, product });
   } catch (err) {
     next(err);
   }
 };
 
-// UPDATE PRODUCT
+// UPDATE PRODUCT (المعدلة لدعم تحديث الصور والحقول الجديدة)
 exports.updateProduct = async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    let productData = { ...req.body };
+
+    // ✅ إذا تم رفع صورة جديدة، نقوم بتحديث مسار الصورة
+    if (req.file) {
+      productData.image = `/uploads/${req.file.filename}`;
+    }
+
+    // ✅ معالجة الـ Tags عند التحديث
+    if (productData.tags && typeof productData.tags === 'string') {
+      try {
+        productData.tags = JSON.parse(productData.tags);
+      } catch (e) {
+        productData.tags = productData.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+
+    const product = await Product.findByIdAndUpdate(req.params.id, productData, {
       new: true,
       runValidators: true
     });

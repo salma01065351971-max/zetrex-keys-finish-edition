@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // إنشاء نسخة Axios مع الإعدادات الافتراضية
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: 'http://localhost:5001/api' || '/api',
   timeout: 30000,
 });
 
@@ -100,6 +100,9 @@ export const orderAPI = {
   
   // تحديث حالة الطلب (قيد التنفيذ، تم الشحن، إلخ)
   updateStatus: (id, status) => API.put(`/orders/${id}/status`, { status }),
+
+  // تأكيد الطلب وإرسال الأكواد (للأدمن)
+  confirmAndSend: (id) => API.post(`/orders/${id}/confirm-and-send`),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +139,7 @@ export const codeAPI = {
 // ─────────────────────────────────────────────────────────────────────────────
 // ADMIN API (لوحة التحكم)
 // ─────────────────────────────────────────────────────────────────────────────
+
 export const adminAPI = {
   // جلب بيانات لوحة القيادة (Dashboard Overview)
   getDashboard: () => API.get('/admin/dashboard'),
@@ -148,6 +152,12 @@ export const adminAPI = {
   
   // تفعيل أو تعطيل حساب مستخدم
   toggleUserStatus: (id) => API.put(`/admin/users/${id}/toggle-status`),
+
+  // 🆕 تحديث إعدادات النظام (مثل وضع الصيانة)
+  updateSettings: (data) => API.put('/admin/settings', data),
+
+  // 🆕 جلب التقارير المالية المفصلة
+  getFinancials: (params) => API.get('/admin/financials', { params }),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +186,26 @@ export const cartAPI = {
 export const systemAPI = {
   // فحص ما إذا كان السيرفر يعمل (Health Check)
   health: () => API.get('/health'),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION API (الإشعارات)
+// ─────────────────────────────────────────────────────────────────────────────
+export const notificationAPI = {
+  // جلب إشعارات المستخدم
+  getNotifications: (params) => API.get('/notifications', { params }),
+  
+  // تعيين إشعار واحد كمقروء
+  markAsRead: (id) => API.put(`/notifications/${id}/read`),
+  
+  // تعيين جميع الإشعارات كمقروء
+  markAllAsRead: () => API.put('/notifications/mark-all-read'),
+  
+  // حذف إشعار
+  deleteNotification: (id) => API.delete(`/notifications/${id}`),
+  
+  // حذف جميع الإشعارات
+  clearAll: () => API.delete('/notifications/clear-all'),
 };
 
 export default API;

@@ -43,4 +43,7 @@ const userRouter = express.Router();
 userRouter.use(protect);
 userRouter.get('/me', require('../controllers/authController').getMe);
 
-module.exports = { orderRouter, codeRouter, paymentRouter, adminRouter, userRouter };
+// ─── Notification Routes ──────────────────────────────────────────────────────
+const notificationRouter = require('./notificationRoutes');
+
+module.exports = { orderRouter, codeRouter, paymentRouter, adminRouter, userRouter, notificationRouter };

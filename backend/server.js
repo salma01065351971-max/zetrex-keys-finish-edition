@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000'
 ].filter(Boolean);
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -32,12 +33,12 @@ app.use(helmet());
 app.use(mongoSanitize());
 
 // ─── Rate Limiting ─────────────────────────────────────────────────────────────
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
-  message: { success: false, message: 'Too many requests, please try again later.' }
-});
-app.use('/api/', limiter);
+//const limiter = rateLimit({
+ // windowMs: 15 * 60 * 1000, // 15 minutes
+ // max: 200,
+ // message: { success: false, message: 'Too many requests, please try again later.' }
+//});
+//app.use('/api/', limiter);
 
 // Stripe webhook needs raw body
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
@@ -56,7 +57,7 @@ app.use('/api/admin',    require('./routes/adminRoutes'));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'DigiVault API is running', env: process.env.NODE_ENV });
+  res.json({ success: true,maintenanceMode: false, message: 'DigiVault API is running', env: process.env.NODE_ENV });
 });
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────

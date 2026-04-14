@@ -3,120 +3,201 @@ import { Link } from 'react-router-dom';
 import { orderAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const STATUSES = ['','pending','paid','processing','completed','failed','refunded','cancelled'];
+// تعريف حالات الطلب والألوان (أسود وأبيض مع تدرجات الرمادي)
+const STATUSES = ['', 'paid_unconfirmed', 'pending', 'paid', 'processing', 'completed', 'failed', 'refunded', 'cancelled'];
 const STATUS_STYLES = {
-  pending:'bg-yellow-500/10 text-yellow-400', paid:'bg-blue-500/10 text-blue-400',
-  processing:'bg-blue-500/10 text-blue-400', completed:'bg-green-500/10 text-green-400',
-  failed:'bg-red-500/10 text-red-400', refunded:'bg-gray-500/10 text-gray-400',
-  cancelled:'bg-red-500/10 text-red-400',
+    paid_unconfirmed: 'bg-white/10 text-white border border-white/20', // تنبيه مميز للأبيض
+    pending: 'bg-gray-800 text-gray-400',
+    paid: 'bg-gray-700 text-gray-200',
+    processing: 'bg-gray-600 text-gray-100',
+    completed: 'bg-white text-black font-bold', // مكتمل بلون أبيض صريح
+    failed: 'bg-red-900/20 text-red-500',
+    refunded: 'bg-gray-800 text-gray-500',
+    cancelled: 'bg-gray-900 text-gray-600',
 };
 
 export default function AdminOrders() {
-  const [orders, setOrders]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus]   = useState('');
-  const [page, setPage]       = useState(1);
-  const [total, setTotal]     = useState(0);
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [status, setStatus] = useState('');
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
 
-  useEffect(() => { loadOrders(); }, [status, page]);
+    useEffect(() => { loadOrders(); }, [status, page]);
 
-  const loadOrders = async () => {
-    setLoading(true);
-    try {
-      const params = { page, limit: 20 };
-      if (status) params.status = status;
-      const res = await orderAPI.getAll(params);
-      setOrders(res.data.orders);
-      setTotal(res.data.total);
-    } catch { toast.error('Failed to load orders'); }
-    finally { setLoading(false); }
-  };
+    const loadOrders = async () => {
+        setLoading(true);
+        try {
+            const params = { page, limit: 20 };
+            if (status) params.status = status;
+            const res = await orderAPI.getAll(params);
+            setOrders(res.data.orders);
+            setTotal(res.data.total);
+            
+            // محاكاة إشعار عند وجود طلبات جديدة غير مؤكدة (مشروع حقيقي)
+            const unconfirmed = res.data.orders.filter(o => o.status === 'paid_unconfirmed');
+            if (unconfirmed.length > 0) {
+                toast(`يوجد ${unconfirmed.length} طلبات جديدة بانتظار التأكيد`, {
+                    icon: '🔔',
+                    style: { background: '#fff', color: '#000' }
+                });
+            }
+        } catch { 
+            toast.error('فشل في تحميل الطلبات', { style: { background: '#000', color: '#fff' } }); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    try {
-      await orderAPI.updateStatus(orderId, newStatus);
-      toast.success('Order status updated');
-      loadOrders();
-    } catch { toast.error('Update failed'); }
-  };
+    const handleStatusChange = async (orderId, newStatus, currentStatus) => {
+        if (newStatus === 'completed' && currentStatus === 'paid_unconfirmed') {
+            return handleConfirm(orderId);
+        }
+        try {
+            await orderAPI.updateStatus(orderId, newStatus);
+            toast.success('تم تحديث حالة الطلب');
+            loadOrders();
+        } catch { toast.error('فشل التحديث'); }
+    };
 
-  return (
-    <div className="page-enter pt-20 pb-16 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <h1 className="font-display font-bold text-3xl text-white">Orders <span className="text-gray-500 font-normal text-xl">({total})</span></h1>
-          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="input-field py-2 text-sm w-40">
-            {STATUSES.map(s => <option key={s} value={s}>{s || 'All Status'}</option>)}
-          </select>
-        </div>
+    // الدالة المسؤولة عن تأكيد الطلب وإرسال الأكواد للعميل
+    const handleConfirm = async (orderId) => {
+        const loadingToast = toast.loading('جاري تأكيد الطلب وإرسال الأكواد للعميل...', {
+            style: { background: '#000', color: '#fff' }
+        });
 
-        <div className="glass rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {['Order #','Customer','Items','Total','Status','Date','Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-4 text-xs text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {loading ? [...Array(8)].map((_,i) => (
-                  <tr key={i}>{[...Array(7)].map((_,j) => <td key={j} className="px-4 py-4"><div className="skeleton h-4 rounded w-20"/></td>)}</tr>
-                )) : orders.map(order => (
-                  <tr key={order._id} className="hover:bg-white/2 transition-colors">
-                    <td className="px-4 py-4">
-                      <span className="font-mono text-primary-400 text-sm">{order.orderNumber}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm text-white">{order.user?.name}</p>
-                      <p className="text-xs text-gray-500 truncate max-w-[140px]">{order.user?.email}</p>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-400">
-                      {order.items?.length} item{order.items?.length !== 1 ? 's' : ''}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="font-semibold text-white">${order.totalAmount?.toFixed(2)}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <select
-                        value={order.status}
-                        onChange={e => handleStatusChange(order._id, e.target.value)}
-                        className={`text-xs px-2 py-1 rounded-lg border-0 outline-none cursor-pointer ${STATUS_STYLES[order.status] || ''}`}
-                        style={{ background: 'transparent' }}
-                      >
-                        {STATUSES.filter(Boolean).map(s => <option key={s} value={s} style={{ background: '#1a1a35' }}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4">
-                      <Link to={`/orders/${order._id}`} className="text-xs px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 transition-colors">
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!loading && orders.length === 0 && (
-              <div className="text-center py-12 text-gray-500">No orders found</div>
-            )}
-          </div>
+        try {
+            await orderAPI.confirmAndSend(orderId);
+            toast.success('تم التأكيد! الأكواد أصبحت جاهزة في حساب العميل الآن 📧', {
+                id: loadingToast,
+                style: { background: '#fff', color: '#000', fontWeight: 'bold' },
+                duration: 5000
+            });
+            loadOrders();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'فشل في إرسال الأكواد', { id: loadingToast });
+        }
+    };
 
-          {/* Pagination */}
-          {total > 20 && (
-            <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs text-gray-500">Showing {(page-1)*20+1}–{Math.min(page*20, total)} of {total}</span>
-              <div className="flex gap-2">
-                <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-40">← Prev</button>
-                <button disabled={page*20>=total} onClick={() => setPage(p=>p+1)} className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-40">Next →</button>
-              </div>
+    return (
+        <div className="page-enter pt-24 pb-16 min-h-screen bg-[#050505] text-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                
+                {/* Header */}
+                <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
+                    <div>
+                        <h1 className="text-4xl font-bold tracking-tight">Orders Management</h1>
+                        <p className="text-gray-500 mt-1">إدارة عمليات الشراء وتأكيد الأكواد الرقمية</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm font-mono text-gray-500">Filter Status:</span>
+                        <select 
+                            value={status} 
+                            onChange={e => { setStatus(e.target.value); setPage(1); }} 
+                            className="bg-black border border-white/10 text-white rounded-xl px-4 py-2 text-sm focus:border-white outline-none transition-all"
+                        >
+                            {STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ').toUpperCase() || 'ALL ORDERS'}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Orders Table Container */}
+                <div className="glass border border-white/5 rounded-3xl overflow-hidden bg-black/20">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-white/10 bg-white/5">
+                                    {['ID / Number', 'Customer', 'Amount', 'Status', 'Date', 'Action'].map(h => (
+                                        <th key={h} className="px-6 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {loading ? (
+                                    [...Array(5)].map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            {[...Array(6)].map((_, j) => (
+                                                <td key={j} className="px-6 py-6"><div className="h-4 bg-white/5 rounded w-24" /></td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                ) : orders.map(order => (
+                                    <tr key={order._id} className="hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-6 py-6 font-mono text-sm">
+                                            <span className="text-gray-500">#</span>
+                                            {order.orderNumber.slice(-6)}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <p className="text-sm font-bold text-white">{order.user?.name}</p>
+                                            <p className="text-[10px] text-gray-500 font-mono">{order.user?.email}</p>
+                                        </td>
+                                        <td className="px-6 py-6 font-bold text-white text-sm">
+                                            ${order.totalAmount?.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <span className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-full ${STATUS_STYLES[order.status]}`}>
+                                                {order.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-6 text-[11px] text-gray-500 font-medium">
+                                            {new Date(order.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <div className="flex items-center gap-3">
+                                                {order.status === 'paid_unconfirmed' && (
+                                                    <button
+                                                        onClick={() => handleConfirm(order._id)}
+                                                        className="bg-white text-black text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-gray-200 transition-all active:scale-95 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                                                    >
+                                                        Confirm & Send
+                                                    </button>
+                                                )}
+                                                <Link 
+                                                    to={`/orders/${order._id}`} 
+                                                    className="text-gray-400 hover:text-white transition-colors"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {!loading && orders.length === 0 && (
+                            <div className="text-center py-20">
+                                <p className="text-gray-600 italic tracking-widest text-sm uppercase">No transaction records found</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Black & White Pagination */}
+                    {total > 20 && (
+                        <div className="px-8 py-6 border-t border-white/5 flex items-center justify-between bg-black/40">
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                                Showing {orders.length} of {total} results
+                            </span>
+                            <div className="flex gap-4">
+                                <button 
+                                    disabled={page === 1} 
+                                    onClick={() => setPage(p => p - 1)} 
+                                    className="px-4 py-2 border border-white/10 rounded-xl text-xs hover:bg-white hover:text-black transition-all disabled:opacity-20"
+                                >
+                                    Previous
+                                </button>
+                                <button 
+                                    disabled={page * 20 >= total} 
+                                    onClick={() => setPage(p => p + 1)} 
+                                    className="px-4 py-2 border border-white/10 rounded-xl text-xs hover:bg-white hover:text-black transition-all disabled:opacity-20"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-          )}
         </div>
-      </div>
-    </div>
-  );
+    );
 }

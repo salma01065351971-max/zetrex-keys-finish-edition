@@ -1,23 +1,19 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const DigitalCode = require('../models/DigitalCode');
-
-// ❌ شيلنا fulfillOrder من هنا
-// const { fulfillOrder } = require('./orderController');
+const crypto = require('crypto');
 
 exports.getConfig = async (req, res) => {
   res.json({ success: true, publishableKey: 'fake_key', fakeMode: true });
 };
 
+// ── Create Payment Intent (ينشئ الأوردر مباشرة بـ paid_unconfirmed) ──
 exports.createPaymentIntent = async (req, res, next) => {
   try {
     const { items } = req.body;
 
     if (!items || !items.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'No items'
-      });
+      return res.status(400).json({ success: false, message: 'No items provided' });
     }
 
     let totalAmount = 0;
@@ -27,10 +23,7 @@ exports.createPaymentIntent = async (req, res, next) => {
       const product = await Product.findById(item.productId);
 
       if (!product || !product.isActive) {
-        return res.status(400).json({
-          success: false,
-          message: 'Product not found'
-        });
+        return res.status(400).json({ success: false, message: `Product not found: ${item.productId}` });
       }
 
       const available = await DigitalCode.countDocuments({
@@ -39,10 +32,7 @@ exports.createPaymentIntent = async (req, res, next) => {
       });
 
       if (available < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Out of stock: ${product.name}`
-        });
+        return res.status(400).json({ success: false, message: `Out of stock: ${product.name}` });
       }
 
       totalAmount += product.price * item.quantity;
@@ -59,32 +49,43 @@ exports.createPaymentIntent = async (req, res, next) => {
 
     const finalAmount = Math.round(totalAmount * 100) / 100;
 
-    // ✅ منع تكرار الأوردر
-    const recentOrder = await Order.findOne({
-      user: req.user.id,
-      status: 'pending',
-      totalAmount: finalAmount,
-      createdAt: {
-        $gte: new Date(Date.now() - 5 * 60 * 1000)
-      }
-    });
+    // Idempotency: avoid duplicate orders for same cart within a short window
+    const signature = orderItems
+      .map(i => `${i.product.toString()}:${i.quantity}:${i.price}`)
+      .sort()
+      .join('|');
+    const checkoutHash = crypto
+      .createHash('sha256')
+      .update(`${req.user.id}|${finalAmount}|${signature}`)
+      .digest('hex');
 
-    if (recentOrder) {
+    const recentCutoff = new Date(Date.now() - 10 * 60 * 1000);
+    const existing = await Order.findOne({
+      user: req.user.id,
+      checkoutHash,
+      status: 'paid_unconfirmed',   // was pending
+      createdAt: { $gte: recentCutoff }
+    }).sort({ createdAt: -1 });
+
+    if (existing) {
       return res.json({
         success: true,
-        clientSecret: 'fake_' + recentOrder._id,
-        orderId: recentOrder._id,
-        totalAmount: finalAmount,
-        fakeMode: true
+        clientSecret: 'fake_' + existing._id,
+        orderId: existing._id,
+        totalAmount: existing.totalAmount,
+        fakeMode: true,
+        reused: true
       });
     }
 
+    // Create new order
     const order = await Order.create({
       user: req.user.id,
       items: orderItems,
       totalAmount: finalAmount,
-      status: 'pending',
-      paymentMethod: 'manual'
+      status: 'paid_unconfirmed',   // was pending
+      paymentMethod: 'manual',
+      checkoutHash
     });
 
     res.json({
@@ -100,27 +101,22 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-
-// ✅ هنا التعديل المهم
+// ── Confirm Payment (دلوقتي مش بينشئ أوردر، بس بيتأكد) ──
 exports.confirmPayment = async (req, res, next) => {
   try {
+    const { orderId } = req.params;
+
     const order = await Order.findOne({
-      _id: req.params.orderId,
+      _id: orderId,
       user: req.user.id
     });
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // لو already processed
-    if (
-      order.status === 'paid_unconfirmed' ||
-      order.status === 'completed'
-    ) {
+    // لو الأوردر خلاص في الحالة الصحيحة
+    if (order.status === 'paid_unconfirmed' || order.status === 'completed') {
       return res.json({
         success: true,
         order,
@@ -128,15 +124,11 @@ exports.confirmPayment = async (req, res, next) => {
       });
     }
 
-    if (order.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Order cannot be processed'
-      });
+    // لو كان في حالة تانية (مثل failed)
+    if (order.status !== 'paid_unconfirmed') {
+      return res.status(400).json({ success: false, message: 'Order cannot be processed' });
     }
 
-    // ✅ بدل paid → paid_unconfirmed
-    order.status = 'paid_unconfirmed';
     await order.save();
 
     res.json({
@@ -149,8 +141,8 @@ exports.confirmPayment = async (req, res, next) => {
   }
 };
 
-
-// مش مستخدم دلوقتي
 exports.stripeWebhook = async (req, res) => {
   res.json({ received: true });
 };
+
+

@@ -175,18 +175,63 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     const { status } = req.body;
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
+    const order = await Order.findById(req.params.id).populate('user', 'name email');
     if (!order) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
     }
+
+    // If admin marks as completed, run full fulfillment to attach codes
+    if (status === 'completed') {
+      if (order.status === 'completed') {
+        return res.json({ success: true, order });
+      }
+      if (order.status !== 'paid_unconfirmed') {
+        return res.status(400).json({
+          success: false,
+          message: 'Order not ready for completion'
+        });
+      }
+
+      const fulfilled = await exports.fulfillOrder(order._id);
+      
+      // Send email confirmation
+      emailService
+        .sendOrderConfirmation(fulfilled.user, fulfilled)
+        .catch(console.error);
+
+      // Create notification for the user that codes are ready
+      try {
+        const codesCount = fulfilled.items.reduce((sum, item) => sum + item.quantity, 0);
+        console.log(`📢 Creating notification for user ID: ${fulfilled.user._id}`);
+        console.log(`   Order: ${fulfilled.orderNumber}, Codes: ${codesCount}`);
+        
+        const notification = await NotificationService.createNotification(fulfilled.user._id, {
+          type: 'codes_ready',
+          title: '🎉 Your Codes Are Ready!',
+          message: `Your order ${fulfilled.orderNumber} has been confirmed. ${codesCount} code(s) are now available for download.`,
+          metadata: {
+            orderId: fulfilled._id,
+            orderNumber: fulfilled.orderNumber,
+            codesCount: codesCount,
+            amount: fulfilled.totalAmount
+          },
+          actionUrl: `/orders/${fulfilled._id}`
+        });
+        
+        console.log(`✅ Notification created successfully: ${notification._id}`);
+      } catch (notifErr) {
+        console.error(`❌ Failed to create notification:`, notifErr.message);
+        console.error(notifErr);
+      }
+
+      return res.json({ success: true, order: fulfilled });
+    }
+
+    order.status = status;
+    await order.save();
 
     res.json({ success: true, order });
 

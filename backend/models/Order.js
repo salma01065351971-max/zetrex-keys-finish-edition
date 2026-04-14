@@ -43,16 +43,17 @@ const orderSchema = new mongoose.Schema({
     default: 'USD'
   },
   status: {
-    type: String,
-enum: ['pending', 'paid', 'paid_unconfirmed', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
-    default: 'pending'
-  },
+  type: String,
+  enum: ['paid_unconfirmed', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
+  default: 'paid_unconfirmed'
+},
   paymentMethod: {
     type: String,
     enum: ['stripe', 'paymob', 'manual'],
     default: 'stripe'
   },
   paymentIntentId: String,
+  checkoutHash: String,
   paymentDetails: mongoose.Schema.Types.Mixed,
   emailSent: {
     type: Boolean,
@@ -77,5 +78,6 @@ orderSchema.pre('save', async function (next) {
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentIntentId: 1 });
+orderSchema.index({ user: 1, checkoutHash: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);
