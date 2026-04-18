@@ -57,6 +57,12 @@ export const authAPI = {
   
   // تغيير كلمة المرور
   updatePassword: (data) => API.put('/auth/update-password', data),
+  getWishlist: () => API.get('/auth/wishlist'),
+  toggleWishlist: (productId) => API.post(`/auth/wishlist/${productId}`),
+
+  // استعادة كلمة المرور
+  forgotPassword: (email) => API.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => API.put(`/auth/reset-password/${token}`, { password }),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +108,7 @@ export const orderAPI = {
   updateStatus: (id, status) => API.put(`/orders/${id}/status`, { status }),
 
   // تأكيد الطلب وإرسال الأكواد (للأدمن)
-  confirmAndSend: (id) => API.post(`/orders/${id}/confirm-and-send`),
+  confirmAndSend: (id, data = {}) => API.post(`/orders/${id}/confirm-and-send`, data),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,19 +153,20 @@ export const adminAPI = {
   // جلب قائمة كل المستخدمين
   getUsers: (params) => API.get('/admin/users', { params }),
   
-  // تغيير رتبة مستخدم (User, Admin, Editor)
-  updateUserRole: (id, role) => API.put(`/admin/users/${id}/role`, { role }),
+  // ✅ التعديل هنا: جعل الدالة تقبل كائن يحتوي على الرتبة والصلاحيات معاً
+  updateUserRole: (id, data) => API.put(`/admin/users/${id}/role`, data),
   
   // تفعيل أو تعطيل حساب مستخدم
   toggleUserStatus: (id) => API.put(`/admin/users/${id}/toggle-status`),
 
-  // 🆕 تحديث إعدادات النظام (مثل وضع الصيانة)
+  // تحديث إعدادات النظام (مثل وضع الصيانة)
   updateSettings: (data) => API.put('/admin/settings', data),
 
-  // 🆕 جلب التقارير المالية المفصلة
+  // جلب التقارير المالية المفصلة
   getFinancials: (params) => API.get('/admin/financials', { params }),
-};
 
+  getLogs: () => API.get('/admin/logs'),
+};
 // ─────────────────────────────────────────────────────────────────────────────
 // CART API (عربة التسوق - قاعدة البيانات)
 // ─────────────────────────────────────────────────────────────────────────────

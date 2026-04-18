@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
+const crypto = require('crypto');
 
 const ROLES = ['user', 'editor', 'admin', 'manager', 'co-owner', 'owner'];
 
@@ -23,6 +24,24 @@ const userSchema = new mongoose.Schema({
     required: [function () { return !this.isGoogleUser; }, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters'],
     select: false
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin', 'manager', 'owner', 'hidden'], // أضفنا hidden
+    default: 'user'
+  },
+  
+  // نظام الصلاحيات الجديد
+  permissions: {
+    type: [String],
+    default: [] 
+    // مثال: ['manage_products', 'manage_orders', 'maintenance_mode', 'edit_roles']
+  },
+
+  // للاسم المخفي أو العلامة (مثل النجمة)
+  customTitle: {
+    type: String,
+    default: ''
   },
   phone: {
     type: String,
@@ -54,6 +73,10 @@ phone: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order'
   }],
+  wishlist: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date
@@ -83,9 +106,27 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
 };
 
 // Role permission levels
+// داخل models/User.js
 userSchema.methods.hasPermission = function (requiredRole) {
-  const roleHierarchy = { user: 0, editor: 1, admin: 2, manager: 3, 'co-owner': 4, owner: 5 };
+  // أضيفي hidden هنا وأعطيها أعلى رقم (مثلاً 6)
+  const roleHierarchy = { 
+    user: 0, 
+    editor: 1, 
+    admin: 2, 
+    manager: 3, 
+    'co-owner': 4, 
+    owner: 5, 
+    hidden: 6 
+  };
   return roleHierarchy[this.role] >= roleHierarchy[requiredRole];
+};
+
+// Generate password reset token
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  return resetToken;
 };
 
 module.exports = mongoose.model('User', userSchema);

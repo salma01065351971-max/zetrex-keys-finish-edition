@@ -77,6 +77,14 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isUnlimited: {
+    type: Boolean,
+    default: false
+  },
+  isOutOfStock: {
+    type: Boolean,
+    default: false
+  },
   stock: {
     type: Number,
     default: 0,

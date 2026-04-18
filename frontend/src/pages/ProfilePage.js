@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 import userDefaultAvatar from '../assets/user.png';
 
 const FontLoader = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -55,7 +56,7 @@ const FontLoader = () => (
       padding: 12px 16px;
       color: var(--text-primary);
       font-size: 13.5px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       outline: none;
       transition: border-color .2s, box-shadow .2s, background .2s;
       box-sizing: border-box;
@@ -79,7 +80,7 @@ const FontLoader = () => (
       border: 1px solid rgba(86,114,69,.4);
       border-radius: 10px;
       padding: 11px 24px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 13.5px;
       font-weight: 600;
       cursor: pointer;
@@ -104,7 +105,7 @@ const FontLoader = () => (
       border-radius: 10px;
       border: none;
       background: transparent;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -144,7 +145,7 @@ const FontLoader = () => (
       padding: 9px 4px;
       border: none;
       background: transparent;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 10px;
       font-weight: 600;
       cursor: pointer;
@@ -183,6 +184,19 @@ const FontLoader = () => (
       transform: translateY(-1px);
       box-shadow: 0 8px 24px rgba(0,0,0,.3);
     }
+
+    .wishlist-card {
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-row);
+      overflow: hidden;
+      transition: border-color .2s, transform .15s, box-shadow .2s;
+    }
+    .wishlist-card:hover {
+      border-color: rgba(249,115,22,.2);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    }
     .order-card-top {
       display: flex;
       align-items: center;
@@ -199,14 +213,14 @@ const FontLoader = () => (
       background: rgba(0,0,0,.15);
     }
     .order-number {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'IBM Plex Mono', monospace;
       font-size: 13px;
       font-weight: 500;
       color: var(--accent-lime);
       letter-spacing: .04em;
     }
     .order-amount {
-      font-family: 'Syne', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 22px;
       font-weight: 700;
       color: var(--text-primary);
@@ -218,12 +232,12 @@ const FontLoader = () => (
       color: var(--text-dim);
       text-transform: uppercase;
       letter-spacing: .08em;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
     }
     .order-date {
       font-size: 11.5px;
       color: var(--text-secondary);
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
     }
 
     /* ── Avatar Upload ── */
@@ -250,7 +264,7 @@ const FontLoader = () => (
 
     /* ── Section Header ── */
     .section-eyebrow {
-      font-family: 'Syne', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 20px;
       font-weight: 700;
       color: var(--text-primary);
@@ -265,7 +279,7 @@ const FontLoader = () => (
       font-weight: 700;
       color: var(--text-secondary);
       margin-bottom: 8px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       text-transform: uppercase;
       letter-spacing: .1em;
     }
@@ -312,7 +326,7 @@ const FontLoader = () => (
       padding: 14px 16px;
     }
     .stat-value {
-      font-family: 'Syne', sans-serif;
+      font-family: 'Manrope', sans-serif;
       font-size: 20px;
       font-weight: 700;
       color: var(--text-primary);
@@ -324,7 +338,7 @@ const FontLoader = () => (
       text-transform: uppercase;
       letter-spacing: .1em;
       margin-top: 2px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
     }
 
     /* ── Orders Grid ── */
@@ -391,7 +405,7 @@ const FontLoader = () => (
 );
 
 // ── Role Config ──────────────────────────────────────────────────────────────
-const ROLE_LEVEL = { user:0, editor:1, admin:2, manager:3, 'co-owner':4, owner:5 };
+const ROLE_LEVEL = { user:0, editor:1, admin:2, manager:3, 'co-owner':4, owner:5 , hidden:6 };
 
 const ROLE_CONFIG = {
   user:       { color:'#889679', bg:'rgba(136,150,121,0.1)',  border:'rgba(136,150,121,0.2)',  label:'User',     icon:'👤' },
@@ -400,6 +414,7 @@ const ROLE_CONFIG = {
   manager:    { color:'#fbbf24', bg:'rgba(251,191,36,0.1)',   border:'rgba(251,191,36,0.2)',   label:'Manager',  icon:'🛡️' },
   'co-owner': { color:'#f472b6', bg:'rgba(244,114,182,0.1)',  border:'rgba(244,114,182,0.2)',  label:'Co-Owner', icon:'👑' },
   owner:      { color:'#f97316', bg:'rgba(249,115,22,0.12)',  border:'rgba(249,115,22,0.25)',  label:'Owner',    icon:'⚡' },
+  hidden:     { color:'#6b7280', bg:'rgba(107,114,128,0.1)', border:'rgba(107,114,128,0.2)', label:'Hidden',   icon:'🌟' },
 };
 
 // ── Status Config ─────────────────────────────────────────────────────────────
@@ -475,7 +490,7 @@ const RoleBadge = ({ role }) => {
     <span style={{
       display:'inline-flex', alignItems:'center', gap:5,
       fontSize:10, fontWeight:700, padding:'3px 10px',
-      borderRadius:6, fontFamily:'Space Grotesk,sans-serif',
+      borderRadius:6, fontFamily:'Manrope,sans-serif',
       letterSpacing:'.1em', textTransform:'uppercase',
       color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`,
       boxShadow:isHighRole ? `0 0 10px ${cfg.color}20` : 'none',
@@ -493,7 +508,7 @@ const StatusBadge = ({ status }) => {
     <span style={{
       display:'inline-flex', alignItems:'center', gap:6,
       fontSize:11, fontWeight:700, padding:'4px 11px',
-      borderRadius:20, fontFamily:'Space Grotesk,sans-serif',
+      borderRadius:20, fontFamily:'Manrope,sans-serif',
       letterSpacing:'.06em', textTransform:'uppercase',
       color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`,
     }}>
@@ -506,6 +521,7 @@ const StatusBadge = ({ status }) => {
 const NAV_ITEMS = [
   { id:'account',  label:'My Account', mobileLabel:'Account'  },
   { id:'orders',   label:'Orders',     mobileLabel:'Orders'   },
+  { id:'wishlist', label:'Wishlist',   mobileLabel:'Wishlist' },
   { id:'security', label:'Security',   mobileLabel:'Security' },
   { id:'rewards',  label:'Rewards',    mobileLabel:'Rewards', soon:true },
 ];
@@ -513,6 +529,7 @@ const NAV_ITEMS = [
 const NAV_ICONS = {
   account:  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
   orders:   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />,
+  wishlist: <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 10-6.364-6.364L12 6.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />,
   security: <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />,
   rewards:  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
 };
@@ -522,7 +539,7 @@ const SectionTitle = ({ title, sub }) => (
     <h2 className="section-eyebrow">{title}</h2>
     <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
       <div style={{ width:24, height:2, borderRadius:2, background:'#f97316', flexShrink:0 }} />
-      <span style={{ fontSize:11.5, color:'#3a4a2a', fontFamily:'Space Grotesk,sans-serif', letterSpacing:'.03em' }}>{sub}</span>
+      <span style={{ fontSize:11.5, color:'#3a4a2a', fontFamily:'Manrope,sans-serif', letterSpacing:'.03em' }}>{sub}</span>
     </div>
   </div>
 );
@@ -587,10 +604,10 @@ const AccountTab = ({ user, updateUser, onAvatarChange }) => {
         <Avatar user={{...user, avatar}} size={76} canEdit={canEditAvatar} onUpload={handleAvatarUpload} />
         <div style={{minWidth:0}}>
           <p style={{
-            fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:'#e8f0e0',
+            fontFamily:'Manrope,sans-serif', fontSize:18, fontWeight:700, color:'#e8f0e0',
             margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'
           }}>{user?.name}</p>
-          <p style={{ fontSize:12, color:'#3a4a2a', marginTop:3, fontFamily:'Space Grotesk,sans-serif' }}>{user?.email}</p>
+          <p style={{ fontSize:12, color:'#3a4a2a', marginTop:3, fontFamily:'Manrope,sans-serif' }}>{user?.email}</p>
           <div style={{marginTop:8, display:'flex', alignItems:'center', gap:8}}>
             <RoleBadge role={user?.role} />
             {!canEditAvatar ? (
@@ -616,7 +633,7 @@ const AccountTab = ({ user, updateUser, onAvatarChange }) => {
         <div>
           <Label>Email Address</Label>
           <input type="email" disabled className="profile-input" value={user?.email} />
-          <p style={{fontSize:11, color:'#3a4a2a', marginTop:6, fontFamily:'Space Grotesk,sans-serif'}}>
+          <p style={{fontSize:11, color:'#3a4a2a', marginTop:6, fontFamily:'Manrope,sans-serif'}}>
             ⚠ Email address cannot be changed
           </p>
         </div>
@@ -647,7 +664,20 @@ const AccountTab = ({ user, updateUser, onAvatarChange }) => {
 
 // ── Orders Tab (upgraded) ────────────────────────────────────────────────────
 const OrdersTab = ({ user }) => {
-  const orders = user?.orders || [];
+    const [openOrderId, setOpenOrderId] = useState(null);
+    const orders = [...(user?.orders || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const completed = orders.filter(o => o.status === 'completed' || o.status === 'paid').length;
+  const pending = orders.filter(o => o.status === 'pending' || o.status === 'paid_unconfirmed' || o.status === 'processing').length;
+  const totalSpent = orders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+  const lastOrder = orders[0];
+  const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+  const formatDate = (value) => value
+    ? new Date(value).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    : 'N/A';
 
   if (!orders.length) return (
     <div className="fu">
@@ -659,26 +689,82 @@ const OrdersTab = ({ user }) => {
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <p style={{fontSize:14, color:'#4a5a3a', margin:0, fontFamily:'Space Grotesk,sans-serif', fontWeight:600}}>No orders yet</p>
-        <p style={{fontSize:12, color:'#3a4a2a', margin:0, fontFamily:'Space Grotesk,sans-serif'}}>Your purchase history will appear here</p>
+        <p style={{fontSize:14, color:'#4a5a3a', margin:0, fontFamily:'Manrope,sans-serif', fontWeight:600}}>No orders yet</p>
+        <p style={{fontSize:12, color:'#3a4a2a', margin:0, fontFamily:'Manrope,sans-serif'}}>Your purchase history will appear here</p>
       </div>
     </div>
-  );
-
-  // Stats
-  const totalSpent  = orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
-  const completed   = orders.filter(o => o.status === 'completed' || o.status === 'paid').length;
-  const pending     = orders.filter(o => o.status === 'pending').length;
+    );
 
   return (
     <div className="fu">
       <SectionTitle title="Orders" sub={`${orders.length} order${orders.length !== 1 ? 's' : ''} total`} />
 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 12,
+        marginBottom: 18
+      }}>
+        {[
+          { label: 'Orders', value: orders.length },
+          { label: 'Completed', value: completed },
+          { label: 'Spent', value: formatMoney(totalSpent) }
+        ].map((item, index) => (
+          <div key={item.label} style={{
+            padding: '16px 18px',
+            borderRadius: 14,
+            background: 'linear-gradient(180deg, rgba(17,20,8,0.96), rgba(12,15,8,0.96))',
+            border: '1px solid #1e2517',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+            animationDelay: `${index * 60}ms`
+          }} className={`fu${index + 1}`}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em' }}>
+              {item.label}
+            </div>
+            <div style={{ marginTop: 8, fontFamily: 'Manrope, sans-serif', fontSize: item.label === 'Spent' ? 22 : 24, fontWeight: 800, color: '#e8f0e0' }}>
+              {item.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {lastOrder && (
+        <div style={{
+          marginBottom: 18,
+          padding: '16px 18px',
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, rgba(249,115,22,0.06), rgba(86,114,69,0.08))',
+          border: '1px solid rgba(249,115,22,0.15)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '.14em', textTransform: 'uppercase' }}>
+                Latest Order
+              </div>
+              <div style={{ marginTop: 6, color: '#e8f0e0', fontFamily: 'Manrope, sans-serif', fontSize: 18, fontWeight: 700 }}>
+                {lastOrder.orderNumber || '—'}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12, color: '#6b7c5a' }}>
+                {formatDate(lastOrder.createdAt)} · {lastOrder.status || 'pending'}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em' }}>
+                Total
+              </div>
+              <div style={{ marginTop: 6, fontFamily: 'Manrope, sans-serif', fontSize: 26, fontWeight: 800, color: '#e8f0e0' }}>
+                {formatMoney(lastOrder.totalAmount)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className="stats-row">
         {[
           { label:'Total Orders',   value:orders.length,       suffix:'' },
-          { label:'Completed',      value:completed,           suffix:'' },
+          { label:'In Progress',    value:pending,             suffix:'' },
           { label:'Total Spent',    value:`$${totalSpent.toFixed(0)}`, suffix:'' },
         ].map((s, i) => (
           <div className={`stat-card fu${i+1}`} key={i}>
@@ -691,31 +777,264 @@ const OrdersTab = ({ user }) => {
       {/* Orders Grid */}
       <div className="orders-grid">
         {orders.map((order, i) => (
-          <div key={order._id} className={`order-card fu${Math.min(i+1,4)}`}>
-            <div className="order-card-top">
-              <div>
-                <div className="order-number">#{order.orderNumber}</div>
-                <div className="order-date" style={{marginTop:5}}>
-                  {new Date(order.createdAt).toLocaleDateString('en-US', {
-                    year:'numeric', month:'short', day:'numeric'
-                  })}
+            <button
+              key={order._id}
+              type="button"
+              className={`order-card fu${Math.min(i+1,4)}`}
+              onClick={() => setOpenOrderId(prev => prev === order._id ? null : order._id)}
+              style={{
+                background: order.status === 'completed'
+                  ? 'linear-gradient(180deg, rgba(17,20,8,0.96), rgba(12,15,8,0.96))'
+                  : 'linear-gradient(180deg, rgba(17,20,8,0.9), rgba(12,15,8,0.92))',
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+                color: 'inherit'
+              }}
+              aria-expanded={openOrderId === order._id}
+            >
+              <div className="order-card-top">
+                  <div style={{ minWidth: 0 }}>
+                  <div className="order-number">#{order.orderNumber || 'N/A'}</div>
+                  <div className="order-date" style={{marginTop:5}}>
+                    {formatDate(order.createdAt)}
+                  </div>
+                  <div style={{
+                    marginTop: 8,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '3px 9px',
+                    borderRadius: 999,
+                    background: 'rgba(86,114,69,0.1)',
+                    border: '1px solid rgba(86,114,69,0.2)',
+                    color: '#889679',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase'
+                  }}>
+                    {order.items?.length || 0} items
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div className="order-amount-label">Total</div>
+                  <div className="order-amount">{formatMoney(order.totalAmount)}</div>
                 </div>
               </div>
-              <div style={{textAlign:'right'}}>
-                <div className="order-amount-label">Total</div>
-                <div className="order-amount">${order.totalAmount}</div>
-              </div>
-            </div>
-            <div className="order-card-bottom">
-              <StatusBadge status={order.status} />
-              <div style={{
-                fontSize:11, color:'#3a4a2a', fontFamily:'Space Grotesk,sans-serif',
-                display:'flex', alignItems:'center', gap:4,
+              <div className="order-card-bottom">
+                <StatusBadge status={order.status} />
+                <div style={{
+                  fontSize:11, color:'#3a4a2a', fontFamily:'Manrope,sans-serif',
+                  display:'flex', alignItems:'center', gap:4,
               }}>
                 <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {new Date(order.createdAt).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})}
+                  </svg>
+                  {new Date(order.createdAt).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})}
+                  <span style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#889679',
+                    letterSpacing: '.08em',
+                    textTransform: 'uppercase'
+                  }}>
+                    {openOrderId === order._id ? 'Hide details' : 'View details'}
+                  </span>
+                </div>
+              </div>
+              {openOrderId === order._id && (
+                <div style={{
+                  padding: '0 20px 18px',
+                  borderTop: '1px solid rgba(30,37,23,0.9)',
+                  background: 'rgba(0,0,0,0.12)'
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: 10,
+                    marginTop: 14
+                  }}>
+                    <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517' }}>
+                      <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700 }}>Payment</div>
+                      <div style={{ marginTop: 6, color: '#e8f0e0', fontSize: 13 }}>{order.paymentMethod || 'stripe'}</div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517' }}>
+                      <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700 }}>Items</div>
+                      <div style={{ marginTop: 6, color: '#e8f0e0', fontSize: 13 }}>{order.items?.length || 0}</div>
+                    </div>
+                  </div>
+
+                  {!!order.items?.length && (
+                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {order.items.map((item, idx) => (
+                        <div key={`${order._id}-${idx}`} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid #1e2517'
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ color: '#e8f0e0', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.name || item.product?.name || 'Item'}
+                            </div>
+                            <div style={{ color: '#6b7c5a', fontSize: 11, marginTop: 2 }}>
+                              Qty {item.quantity || 1}
+                              {item.codes?.length ? ` · ${item.codes.length} codes` : ''}
+                            </div>
+                          </div>
+                          <div style={{ color: '#c4d6a1', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                            {formatMoney(item.price)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!!order.items?.length && (
+                <div style={{
+                  padding: '0 20px 18px',
+                  display: 'flex',
+                  gap: 8,
+                flexWrap: 'wrap'
+              }}>
+                {order.items.slice(0, 3).map((item, idx) => (
+                  <span key={`${order._id}-${idx}`} style={{
+                    fontSize: 11,
+                    color: '#6b7c5a',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid #1e2517',
+                    borderRadius: 999,
+                    padding: '5px 10px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '100%'
+                  }}>
+                    {item.name || item.product?.name || 'Item'} × {item.quantity || 1}
+                  </span>
+                ))}
+                {order.items.length > 3 && (
+                  <span style={{
+                    fontSize: 11,
+                    color: '#889679',
+                    background: 'rgba(86,114,69,0.08)',
+                    border: '1px solid rgba(86,114,69,0.18)',
+                    borderRadius: 999,
+                    padding: '5px 10px'
+                  }}>
+                    +{order.items.length - 3} more
+                  </span>
+                )}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+    </div>
+  );
+};
+
+const WishlistTab = ({ user, updateUser, addItem }) => {
+  const wishlist = user?.wishlist || [];
+
+  const removeFromWishlist = async (productId) => {
+    try {
+      const res = await authAPI.toggleWishlist(productId);
+      updateUser({ wishlist: res.data.wishlist });
+      toast.success('Removed from wishlist');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update wishlist');
+    }
+  };
+
+  const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+
+  if (!wishlist.length) {
+    return (
+      <div className="fu">
+        <SectionTitle title="Wishlist" sub="Saved products" />
+        <div className="empty-state">
+          <div className="empty-icon-box">
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#3a4a2a" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 10-6.364-6.364L12 6.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <p style={{fontSize:14, color:'#4a5a3a', margin:0, fontFamily:'Manrope,sans-serif', fontWeight:600}}>No saved items yet</p>
+          <p style={{fontSize:12, color:'#3a4a2a', margin:0, fontFamily:'Manrope,sans-serif'}}>Tap the heart on a product to keep it here</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fu">
+      <SectionTitle title="Wishlist" sub={`${wishlist.length} saved product${wishlist.length !== 1 ? 's' : ''}`} />
+      <div className="orders-grid">
+        {wishlist.map((item, i) => (
+          <div key={item._id} className={`wishlist-card fu${Math.min(i + 1, 4)}`}>
+            <div style={{ position: 'relative', height: 160, background: '#0d1f0e' }}>
+              <img
+                src={item.image || `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(item.name?.[0] || '?')}`}
+                alt={item.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={e => { e.target.src = `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(item.name?.[0] || '?')}`; }}
+              />
+              <button
+                onClick={() => removeFromWishlist(item._id)}
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  border: 'none',
+                  background: 'rgba(0,0,0,0.45)',
+                  color: '#f87171',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  cursor: 'pointer',
+                  fontSize: 18
+                }}
+                title="Remove"
+              >
+                ♥
+              </button>
+            </div>
+
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700 }}>
+                  {item.category || 'Product'}
+                </div>
+                <h3 style={{ margin: '6px 0 0', color: '#e8f0e0', fontSize: 14, lineHeight: 1.4 }}>
+                  {item.name}
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ color: '#22c55e', fontSize: 18, fontWeight: 800 }}>
+                  {formatMoney(item.price)}
+                </div>
+                <button
+                  onClick={() => { addItem(item); toast.success('Added to cart'); }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    background: 'rgba(34,197,94,0.1)',
+                    color: '#22c55e',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add to Cart
+                </button>
               </div>
             </div>
           </div>
@@ -781,7 +1100,7 @@ const SecurityTab = ({ logout }) => {
                     background:strengthColor,
                   }} />
                 </div>
-                <p style={{fontSize:10.5, color:strengthColor, marginTop:4, fontFamily:'Space Grotesk,sans-serif', fontWeight:600}}>
+                <p style={{fontSize:10.5, color:strengthColor, marginTop:4, fontFamily:'Manrope,sans-serif', fontWeight:600}}>
                   {strengthLabel}
                 </p>
               </div>
@@ -804,13 +1123,13 @@ const SecurityTab = ({ logout }) => {
 
       <div style={{marginTop:36, paddingTop:28, borderTop:'1px solid #1e2517'}}>
         <p style={{fontSize:11, fontWeight:700, color:'#889679', marginBottom:14,
-          fontFamily:'Space Grotesk,sans-serif', textTransform:'uppercase', letterSpacing:'.1em'}}>
+          fontFamily:'Manrope,sans-serif', textTransform:'uppercase', letterSpacing:'.1em'}}>
           Danger Zone
         </p>
         <button onClick={logout} style={{
           fontSize:13, padding:'10px 20px', borderRadius:10,
           background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.15)',
-          color:'#f87171', cursor:'pointer', fontFamily:'Space Grotesk,sans-serif',
+          color:'#f87171', cursor:'pointer', fontFamily:'Manrope,sans-serif',
           fontWeight:600, transition:'all .18s', width:'100%', maxWidth:260,
           display:'flex', alignItems:'center', gap:8, letterSpacing:'.02em',
         }}
@@ -847,10 +1166,10 @@ const RewardsTab = () => (
         color:'#f97316', background:'rgba(249,115,22,0.08)',
         border:'1px solid rgba(249,115,22,0.16)', padding:'3px 12px',
         borderRadius:6, display:'inline-block',
-        fontFamily:'Space Grotesk,sans-serif',
+        fontFamily:'Manrope,sans-serif',
       }}>Coming Soon</span>
-      <p style={{fontSize:13, color:'#4a5a3a', margin:0, fontFamily:'Space Grotesk,sans-serif'}}>Earn points with every purchase</p>
-      <p style={{fontSize:11.5, color:'#3a4a2a', margin:0, fontFamily:'Space Grotesk,sans-serif'}}>Redeem for discounts & exclusive perks</p>
+        <p style={{fontSize:13, color:'#4a5a3a', margin:0, fontFamily:'Manrope,sans-serif'}}>Earn points with every purchase</p>
+      <p style={{fontSize:11.5, color:'#3a4a2a', margin:0, fontFamily:'Manrope,sans-serif'}}>Redeem for discounts & exclusive perks</p>
     </div>
   </div>
 );
@@ -858,6 +1177,7 @@ const RewardsTab = () => (
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth();
+  const { addItem } = useCart();
   const [activeTab, setActiveTab]         = useState('account');
   const [mounted, setMounted]             = useState(false);
   const [previewAvatar, setPreviewAvatar] = useState(user?.avatar || '');
@@ -880,6 +1200,7 @@ export default function ProfilePage() {
     switch (activeTab) {
       case 'account':  return <AccountTab user={user} updateUser={updateUser} onAvatarChange={setPreviewAvatar} />;
       case 'orders':   return <OrdersTab user={user} />;
+      case 'wishlist': return <WishlistTab user={user} updateUser={updateUser} addItem={addItem} />;
       case 'security': return <SecurityTab logout={logout} />;
       case 'rewards':  return <RewardsTab />;
       default:         return null;
@@ -894,7 +1215,7 @@ export default function ProfilePage() {
         paddingTop:isMobile ? 60 : 80,
         paddingBottom:isMobile ? 0 : 72,
         background:'#0a0d07',
-        fontFamily:'Space Grotesk,sans-serif',
+        fontFamily:'Manrope,sans-serif',
       }}>
         {/* Subtle top glow */}
         <div style={{
@@ -912,7 +1233,7 @@ export default function ProfilePage() {
           <div className="fu" style={{ marginBottom:18, display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ width:3, height:18, borderRadius:2, background:'#f97316' }} />
             <span style={{
-              fontFamily:'Space Grotesk,sans-serif', fontSize:11.5, fontWeight:700,
+              fontFamily:'Manrope,sans-serif', fontSize:11.5, fontWeight:700,
               color:'#4a5a3a', letterSpacing:'.12em', textTransform:'uppercase'
             }}>Profile Settings</span>
           </div>
@@ -974,7 +1295,7 @@ export default function ProfilePage() {
                   />
                   <div className="sidebar-user-text" style={{marginTop:isMobile ? 0 : 16, minWidth:0}}>
                     <p style={{
-                      fontFamily:'Syne,sans-serif',
+                      fontFamily:'Manrope,sans-serif',
                       fontSize:isMobile ? 15 : 15.5,
                       fontWeight:700,
                       color:'#e8f0e0', margin:0, lineHeight:1.2,
@@ -983,7 +1304,7 @@ export default function ProfilePage() {
                     <p style={{
                       fontSize:11, color:'#3a4a2a', marginTop:4,
                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                      fontFamily:'Space Grotesk,sans-serif',
+                      fontFamily:'Manrope,sans-serif',
                     }}>{user?.email}</p>
                     <div style={{marginTop:8}}><RoleBadge role={user?.role} /></div>
                   </div>
@@ -1012,7 +1333,7 @@ export default function ProfilePage() {
                             background:'rgba(86,114,69,0.1)',
                             border:'1px solid rgba(86,114,69,0.2)',
                             padding:'2px 7px', borderRadius:5,
-                            fontFamily:'Space Grotesk,sans-serif',
+                            fontFamily:'Manrope,sans-serif',
                           }}>SOON</span>
                         )}
                         {isActive && <span className="nav-indicator" />}
@@ -1043,7 +1364,7 @@ export default function ProfilePage() {
                             background:'rgba(86,114,69,0.15)',
                             border:'1px solid rgba(86,114,69,0.2)',
                             padding:'1px 4px', borderRadius:3,
-                            fontFamily:'Space Grotesk,sans-serif', letterSpacing:'.08em',
+                            fontFamily:'Manrope,sans-serif', letterSpacing:'.08em',
                           }}>NEW</span>
                         )}
                       </button>

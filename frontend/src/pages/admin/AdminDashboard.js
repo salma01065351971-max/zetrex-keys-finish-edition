@@ -3,22 +3,31 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-// مكون الكارت الصغير للإحصائيات
-const StatCard = ({ label, value, icon, sub }) => (
-  <div className="glass rounded-2xl p-6 border border-white/5 bg-black/40 hover:border-white/20 transition-all">
-    <div className="flex items-center justify-between mb-4">
-      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-xl">{icon}</div>
-      {sub && <span className="text-[10px] text-green-400 font-mono bg-green-400/10 px-2 py-0.5 rounded-full">{sub}</span>}
+// Reusable Stat Card Component
+const StatCard = ({ label, value, icon, trend }) => (
+  <div className="group relative overflow-hidden glass rounded-[2rem] p-8 border border-white/5 bg-zinc-900/20 hover:border-white/20 transition-all duration-500">
+    <div className="flex items-start justify-between mb-6">
+      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-500">
+        {icon}
+      </div>
+      {trend && (
+        <span className="text-xs font-semibold font-mono bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full">
+          {trend}
+        </span>
+      )}
     </div>
-    <p className="font-display font-bold text-3xl text-white mb-1">{value}</p>
-    <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">{label}</p>
+    <div className="relative z-10">
+      <h3 className="text-4xl font-bold text-white mb-1">{value}</h3>
+      <p className="text-zinc-500 text-xs font-normal">{label}</p>
+    </div>
+    {/* Decorative background element */}
+    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/[0.02] rounded-full blur-2xl group-hover:bg-white/[0.05] transition-colors" />
   </div>
 );
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isMaintenance, setIsMaintenance] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -29,140 +38,113 @@ export default function AdminDashboard() {
       setLoading(true);
       const res = await adminAPI.getDashboard();
       setStats(res.data.stats);
-      // ضبط حالة الصيانة بناءً على القيمة القادمة من السيرفر
-      setIsMaintenance(res.data.stats.maintenanceMode || false);
     } catch (err) {
-      toast.error('خطأ في جلب بيانات اللوحة');
+      toast.error('Terminal Error: Could not sync dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleMaintenance = async () => {
-    const newStatus = !isMaintenance;
-    try {
-      await adminAPI.updateSettings({ maintenanceMode: newStatus });
-      setIsMaintenance(newStatus);
-      toast.success(newStatus ? 'وضع الصيانة مفعّل الآن' : 'الموقع متاح للزوار الآن', {
-        style: { background: '#000', color: '#fff', border: '1px solid #333' }
-      });
-    } catch (error) {
-      toast.error('فشل تحديث وضع الصيانة');
-    }
-  };
-
   const navItems = [
-    { to: '/admin/products', label: 'Products', icon: '📦', desc: 'إدارة المنتجات' },
-    { to: '/admin/codes', label: 'Codes', icon: '🔑', desc: 'الأكواد الرقمية' },
-    { to: '/admin/orders', label: 'Orders', icon: '🛒', desc: 'الطلبات والمبيعات' },
-    { to: '/admin/users', label: 'Users', icon: '👥', desc: 'إدارة الأعضاء' },
-    { to: '/admin/financials', label: 'Financials', icon: '💰', desc: 'النظام المالي' },
-    { to: '/admin/settings', label: 'Settings', icon: '⚙️', desc: 'إعدادات الموقع' },
+    { to: '/admin/products', label: 'Inventory', icon: '📦' },
+    { to: '/admin/codes', label: 'Key Matrix', icon: '🔑' },
+    { to: '/admin/orders', label: 'Sales Log', icon: '🛒' },
+    { to: '/admin/users', label: 'Directory', icon: '👥' },
+{ to: '/admin/financials', label: 'Ledger', icon: '💰' },
+    { to: '/admin/settings', label: 'System Settings', icon: '⚙️' },
   ];
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#050505]">
+      <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+      <p className="text-xs font-normal text-zinc-500">Loading Dashboard...</p>
     </div>
   );
 
   return (
-    <div className="pt-24 pb-16 min-h-screen bg-[#050505] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <div className="pt-28 pb-16 min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">Admin Terminal</h1>
-            <p className="text-gray-500 mt-1">مرحباً بك في لوحة التحكم - نظام المبيعات الرقمية</p>
+        <div className="mb-16">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-xs font-semibold text-zinc-500">System Status: Operational</span>
           </div>
-          
-          {/* Quick Maintenance Toggle */}
-          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4">
-            <div>
-              <p className="text-[10px] uppercase text-gray-500 font-bold tracking-[0.2em]">Maintenance Mode</p>
-              <p className={`text-sm font-mono ${isMaintenance ? 'text-white' : 'text-gray-400'}`}>
-                {isMaintenance ? 'ACTIVE (Private)' : 'INACTIVE (Live)'}
-              </p>
-            </div>
-            <button 
-              onClick={toggleMaintenance}
-              className={`w-12 h-6 rounded-full transition-all relative ${isMaintenance ? 'bg-white' : 'bg-gray-800'}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${isMaintenance ? 'right-1 bg-black' : 'left-1 bg-gray-500'}`} />
-            </button>
-          </div>
+          <h1 className="text-4xl font-bold leading-none">Command Terminal</h1>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <StatCard label="Total Revenue" value={`$${stats?.totalRevenue?.toFixed(2)}`} icon="💵" sub="+12%" />
-          <StatCard label="Total Orders" value={stats?.totalOrders} icon="🛒" />
-          <StatCard label="Digital Products" value={stats?.totalProducts} icon="📦" />
-          <StatCard label="Active Users" value={stats?.totalUsers} icon="👥" />
+        {/* Primary Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <StatCard label="Net Revenue" value={`$${stats?.totalRevenue?.toLocaleString(undefined, {minimumFractionDigits: 2})}`} icon="💵"  />
+          <StatCard label="Processed Orders" value={stats?.totalOrders} icon="⚡" />
+          <StatCard label="Asset Count" value={stats?.totalProducts} icon="📦" />
+          <StatCard label="Registered Users" value={stats?.totalUsers} icon="👥" />
         </div>
 
-        {/* Navigation Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+        {/* Global Navigation Hub */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-20">
           {navItems.map(item => (
-            <Link key={item.to} to={item.to} className="group p-6 glass border border-white/5 rounded-3xl hover:bg-white hover:text-black transition-all duration-500 text-center">
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{item.icon}</div>
-              <p className="font-bold text-sm tracking-tight">{item.label}</p>
+            <Link key={item.to} to={item.to} className="group relative p-8 glass border border-white/5 rounded-[2rem] hover:bg-white transition-all duration-500 text-center overflow-hidden">
+              <div className="relative z-10 text-3xl mb-4 group-hover:scale-125 group-hover:-translate-y-1 transition-all duration-500">{item.icon}</div>
+              <p className="relative z-10 font-semibold text-xs text-zinc-400 group-hover:text-black transition-colors">{item.label}</p>
             </Link>
           ))}
         </div>
 
-        {/* Tables Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Orders Table */}
-          <div className="glass border border-white/5 rounded-3xl p-8 bg-black/20">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold uppercase tracking-widest text-gray-400">Recent Sales</h2>
-              <Link to="/admin/orders" className="text-xs border-b border-white pb-1 hover:text-gray-400 hover:border-gray-400 transition-all">View All Orders</Link>
+        {/* Secondary Data Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Recent Sales Monitor */}
+          <div className="lg:col-span-7 glass border border-white/5 rounded-[2.5rem] p-10 bg-zinc-900/10">
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-sm font-semibold text-zinc-500">Recent Orders</h2>
+              <Link to="/admin/orders" className="text-xs font-semibold border-b border-white/20 pb-1 hover:border-white transition-all">View All</Link>
             </div>
             <div className="space-y-4">
               {stats?.recentOrders?.map(order => (
-                <div key={order._id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/5 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="text-xs font-mono text-gray-500">#{order.orderNumber.slice(-5)}</div>
+                <div key={order._id} className="flex items-center justify-between p-5 rounded-3xl bg-white/[0.02] border border-white/5 group hover:bg-white/5 transition-all">
+                  <div className="flex items-center gap-5">
+                    <div className="text-xs font-mono font-semibold text-zinc-600">#{order.orderNumber.slice(-5)}</div>
                     <div>
-                      <p className="text-sm font-bold">{order.user?.name || 'Guest'}</p>
-                      <p className="text-[10px] text-gray-500 uppercase">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm font-semibold text-zinc-200">{order.user?.name || 'Guest'}</p>
+                      <p className="text-xs text-zinc-600 font-normal">{new Date(order.createdAt).toDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-mono font-bold">${order.totalAmount.toFixed(2)}</p>
-                    <p className={`text-[10px] font-bold uppercase ${order.status === 'completed' ? 'text-white' : 'text-gray-500'}`}>{order.status}</p>
+                    <p className="text-sm font-mono font-semibold text-white">${order.totalAmount.toFixed(2)}</p>
+                    <p className={`text-xs font-semibold ${order.status === 'completed' ? 'text-emerald-500' : 'text-zinc-500'}`}>{order.status}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Low Stock Section */}
-          <div className="glass border border-white/5 rounded-3xl p-8 bg-black/20">
-            <h2 className="text-xl font-bold uppercase tracking-widest text-gray-400 mb-8">Inventory Alerts</h2>
+          {/* Inventory Alerts (Low Stock) */}
+          <div className="lg:col-span-5 glass border border-white/5 rounded-[2.5rem] p-10 bg-zinc-900/10">
+            <h2 className="text-sm font-semibold text-zinc-500 mb-10">Inventory Alerts</h2>
             <div className="space-y-4">
               {stats?.lowStockProducts?.map(product => (
-                <div key={product._id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-2 h-2 rounded-full ${product.stock === 0 ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-gray-700'}`} />
-                    <p className="text-sm font-medium">{product.name}</p>
+                <div key={product._id} className="flex items-center justify-between p-5 rounded-3xl bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${product.stock === 0 ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse' : 'bg-orange-500'}`} />
+                    <p className="text-xs font-semibold text-zinc-300 truncate max-w-[150px]">{product.name}</p>
                   </div>
-                  <span className={`text-xs font-mono px-3 py-1 rounded-full ${product.stock === 0 ? 'bg-white text-black' : 'bg-white/10'}`}>
+                  <span className={`text-xs font-mono font-semibold px-4 py-2 rounded-xl ${product.stock === 0 ? 'bg-rose-500 text-white' : 'bg-white/5 text-zinc-400'}`}>
                     {product.stock} left
                   </span>
                 </div>
               ))}
-              {stats?.lowStockProducts?.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-gray-600 text-sm italic">All items are well stocked</p>
+              {(!stats?.lowStockProducts || stats.lowStockProducts.length === 0) && (
+                <div className="text-center py-12">
+                  <div className="text-2xl mb-4 opacity-20">🛡️</div>
+                  <p className="text-zinc-700 text-xs font-normal">All systems nominal</p>
                 </div>
               )}
             </div>
           </div>
+          
         </div>
-
       </div>
     </div>
   );

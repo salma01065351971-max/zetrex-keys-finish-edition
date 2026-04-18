@@ -6,10 +6,25 @@ exports.getProducts = async (req, res, next) => {
   try {
     const {
       category, platform, region, minPrice, maxPrice,
-      search, sort, page = 1, limit = 12, featured
+      search, sort, page = 1, limit = 12, featured,
+      isAdmin,
+      activeTab // استلام التبويب من الطلب (live أو hidden)
     } = req.query;
 
-    const query = { isActive: true };
+    let query = {};
+
+    // منطق الفلترة المتقدم للأدمن
+    if (isAdmin === 'true') {
+      if (activeTab === 'live') {
+        query.isActive = true;
+      } else if (activeTab === 'hidden') {
+        query.isActive = false;
+      }
+      // إذا لم يرسل activeTab، سيجلب كل شيء (اختياري)
+    } else {
+      // للمستخدم العادي، يرى النشط فقط دائماً
+      query.isActive = true;
+    }
 
     if (category) query.category = category;
     if (platform) query.platform = new RegExp(platform, 'i');
@@ -42,6 +57,7 @@ exports.getProducts = async (req, res, next) => {
 
     const sortBy = sortOptions[sort] || { createdAt: -1 };
     const skip = (Number(page) - 1) * Number(limit);
+    
     const total = await Product.countDocuments(query);
 
     const products = await Product.find(query)
@@ -65,13 +81,22 @@ exports.getProducts = async (req, res, next) => {
 // GET SINGLE PRODUCT
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findOne({
+    const { isAdmin } = req.query;
+
+    // بناء الكويري للبحث عن المنتج
+    const findQuery = {
       $or: [
         { _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null },
         { slug: req.params.id }
-      ],
-      isActive: true
-    }).populate('reviews.user', 'name avatar');
+      ]
+    };
+
+    // إذا لم يكن أدمن، يجب أن يكون المنتج نشطاً ليراه
+    if (isAdmin !== 'true') {
+      findQuery.isActive = true;
+    }
+
+    const product = await Product.findOne(findQuery).populate('reviews.user', 'name avatar');
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });

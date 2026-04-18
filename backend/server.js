@@ -6,7 +6,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
-
+const Settings = require('./models/Settings'); // استدعاء الموديل
 dotenv.config();
 
 const app = express();
@@ -42,8 +42,10 @@ app.use(mongoSanitize());
 
 // Stripe webhook needs raw body
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+// Avatar images are often sent as base64 data URLs, so the default 10kb limit
+// is too small for profile picture updates.
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth',     require('./routes/authRoutes'));
@@ -55,11 +57,26 @@ app.use('/api/cart',     require('./routes/cartRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ success: true,maintenanceMode: false, message: 'DigiVault API is running', env: process.env.NODE_ENV });
-});
 
+
+// ─── Health Check المطوّر ─────────────────────────────────────────────────────
+app.get('/api/health', async (req, res) => {
+  try {
+    // بنحاول نجيب الإعدادات، لو مش موجودة بننشئ واحدة افتراضية
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({ maintenanceMode: false });
+    }
+    
+    res.json({ 
+      success: true, 
+      maintenanceMode: settings.maintenanceMode, // دي القيمة اللي الجارد بيقرأها
+      message: 'DigiVault API is running' 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, maintenanceMode: false });
+  }
+});
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });

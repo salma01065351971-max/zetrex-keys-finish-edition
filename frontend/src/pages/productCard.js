@@ -36,12 +36,12 @@ export default function ProductCard({ product }) {
   const {
     _id, name, slug, image, category,
     platform, price, originalPrice,
-    discountPercentage, rating = {}, stock, isFeatured,
+    discountPercentage, rating = {}, stock, isFeatured, isUnlimited
   } = product;
 
   const cat = CATEGORY_COLORS[category] || CATEGORY_COLORS.general;
   const hasDiscount = discountPercentage > 0;
-  const outOfStock = stock === 0;
+  const outOfStock = stock === 0 && !isUnlimited;
   const link = `/products/${slug || _id}`;
 
   return (

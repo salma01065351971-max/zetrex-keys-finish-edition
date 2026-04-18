@@ -9,10 +9,10 @@ import promoBanner from '../assets/promo-banner.png';
 // SLIDER DATA
 // ─────────────────────────────────────────────
 const SLIDES = [
-  { 
+  {
 
     tag: 'Featured Promo', tagColor: '#22c55e',
-    
+
     title: 'Digital', subtitle: 'Gaming Paradise',
     desc: 'Exclusive gaming codes and subscriptions.\nSteam, Xbox, PlayStation & more.',
     price: 'From $2.99', oldPrice: null, discount: 'Best Deals', discountBg: '#16a34a',
@@ -211,7 +211,7 @@ const GLOBAL_CSS = `
   .cat-section-wrapper{max-width:1280px;margin:0 auto 32px;padding:0 20px;}
   @media(max-width:768px){ .cat-section-wrapper{padding:0 14px;margin-bottom:20px;} }
 
-  .dv-section-label{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,0.38);}
+  .dv-section-label{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,0.38);}
   .dv-section-label::before,.dv-section-label::after{content:'';display:block;height:1px;width:28px;background:rgba(255,255,255,0.15);}
 
   .stat-card{position:relative;padding:24px 16px 20px;text-align:center;cursor:default;overflow:hidden;transition:transform 0.3s ease,background 0.3s ease;}
@@ -223,9 +223,24 @@ const GLOBAL_CSS = `
   .stat-bar{position:absolute;bottom:0;left:0;height:2px;border-radius:2px;width:0%;}
   .stat-bar.animate{animation:statBarFill 1.2s cubic-bezier(0.22,1,0.36,1) both;}
   .stat-dot{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;transition:transform 0.3s ease;}
-  .stat-card:hover .stat-dot{transform:scale(1.18) rotate(-6deg);}
-  .stat-card.visible .stat-dot{animation:iconPulse 0.5s cubic-bezier(0.34,1.56,0.64,1);}
-`;
+    .stat-card:hover .stat-dot{transform:scale(1.18) rotate(-6deg);}
+    .stat-card.visible .stat-dot{animation:iconPulse 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+
+    @keyframes productRise {
+      from { opacity: 0; transform: translateY(18px) scale(.96); filter: blur(2px); }
+      to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    @keyframes productGlow {
+      0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.24); }
+      50% { box-shadow: 0 16px 34px rgba(34,197,94,0.14); }
+    }
+    .hp-product-card {
+      animation: productRise 0.62s cubic-bezier(.22,.68,0,1.2) both;
+      transform-origin: center bottom;
+      will-change: transform, opacity, filter;
+    }
+   
+  `;
 
 // inject styles ONCE into <head>
 let stylesInjected = false;
@@ -406,7 +421,7 @@ function PromoSlider() {
         <span style={{
           display: 'inline-block', marginBottom: 14, width: 'fit-content',
           fontFamily: 'Rajdhani, sans-serif', fontSize: 10, fontWeight: 700,
-          letterSpacing: '.16em', textTransform: 'uppercase',
+          letterSpacing: '.08em',
           color: s.tagColor, background: `${s.tagColor}18`,
           border: `1px solid ${s.tagColor}45`, padding: '4px 13px', borderRadius: 20,
         }}>{s.tag}</span>
@@ -492,7 +507,7 @@ function PromoSlider() {
 // ─────────────────────────────────────────────
 // SIDE BANNER — memoized
 // ─────────────────────────────────────────────
-const BookIcon   = memo(({ color }) => (<svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>));
+const BookIcon = memo(({ color }) => (<svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>));
 const VoucherIcon = memo(({ color }) => (<svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>));
 const SIDE_ICONS = [BookIcon, VoucherIcon];
 
@@ -522,7 +537,7 @@ const SideBanner = memo(function SideBanner({ banner, index }) {
         <span style={{
           display: 'inline-block', marginBottom: 10,
           fontFamily: 'Rajdhani, sans-serif', fontSize: 9, fontWeight: 700,
-          letterSpacing: '.14em', textTransform: 'uppercase',
+          letterSpacing: '.08em',
           color: banner.tagColor, background: `${banner.tagColor}1a`,
           border: `1px solid ${banner.tagColor}40`, padding: '3px 10px', borderRadius: 20,
         }}>{banner.tag}</span>
@@ -569,7 +584,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1587731556938-38755b4803a6?w=640&q=75&fm=webp&auto=format',
     panelBg: '#1a2e12',
     productBg: 'linear-gradient(135deg, #111a0d 0%, #162211 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#5a9e38" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7" /></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#5a9e38" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7" /></svg>,
   },
   steam: {
     label: 'Steam', color: '#66c0f4',
@@ -577,7 +592,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1614294148960-9aa740632a87?w=640&q=75&fm=webp&auto=format',
     panelBg: '#0c1a26',
     productBg: 'linear-gradient(135deg, #091320 0%, #0f1e30 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#66c0f4" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#66c0f4" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg>,
   },
   discord: {
     label: 'Discord Nitro', color: '#7289da',
@@ -585,7 +600,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=640&q=75&fm=webp&auto=format',
     panelBg: '#161b35',
     productBg: 'linear-gradient(135deg, #10152a 0%, #181e3a 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#7289da" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#7289da" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
   },
   chatgpt: {
     label: 'ChatGPT & AI', color: '#10a37f',
@@ -593,7 +608,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=640&q=75&fm=webp&auto=format',
     panelBg: '#0a1e16',
     productBg: 'linear-gradient(135deg, #071510 0%, #0c1e18 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#10a37f" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#10a37f" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>,
   },
   movies: {
     label: 'Streaming', color: '#e50914',
@@ -601,7 +616,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=640&q=75&fm=webp&auto=format',
     panelBg: '#250808',
     productBg: 'linear-gradient(135deg, #1c0606 0%, #260808 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#e50914" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#e50914" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   },
   'gift-cards': {
     label: 'Gift Cards', color: '#f5c518',
@@ -609,7 +624,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&q=75&fm=webp&auto=format',
     panelBg: '#261f08',
     productBg: 'linear-gradient(135deg, #1d1706 0%, #261f08 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#f5c518" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#f5c518" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>,
   },
   ebooks: {
     label: 'Digital Books', color: '#ff9800',
@@ -617,7 +632,7 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=640&q=75&fm=webp&auto=format',
     panelBg: '#251400',
     productBg: 'linear-gradient(135deg, #1c0f00 0%, #271500 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#ff9800" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#ff9800" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>,
   },
   games: {
     label: 'Games', color: '#b44fff',
@@ -625,11 +640,11 @@ const CATEGORY_META = {
     image: 'https://images.unsplash.com/photo-1614294148960-9aa740632a87?w=640&q=75&fm=webp&auto=format',
     panelBg: '#190a28',
     productBg: 'linear-gradient(135deg, #12071e 0%, #1a0a2c 100%)',
-    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#b44fff" strokeWidth="1.5" style={{zIndex:2,marginBottom:16}}><path strokeLinecap="round" strokeLinejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>,
+    icon: <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#b44fff" strokeWidth="1.5" style={{ zIndex: 2, marginBottom: 16 }}><path strokeLinecap="round" strokeLinejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>,
   },
 };
 
-const CATEGORY_ORDER = ['minecraft','steam','discord','chatgpt','movies','gift-cards','ebooks','games'];
+const CATEGORY_ORDER = ['minecraft', 'steam', 'discord', 'chatgpt', 'movies', 'gift-cards', 'ebooks', 'games'];
 
 // ─────────────────────────────────────────────
 // CATEGORY BANNER — memoized
@@ -656,14 +671,14 @@ const CategoryBanner = memo(function CategoryBanner({ meta, categoryId }) {
 // ─────────────────────────────────────────────
 // CATEGORY SECTION — lazy loaded via IntersectionObserver
 // ─────────────────────────────────────────────
-function CategorySection({ categoryId, fetchFn }) {
+function CategorySection({ categoryId, fetchFn, sectionIndex = 0 }) {
   const meta = CATEGORY_META[categoryId];
   const sliderRef = useRef(null);
-  const [canLeft, setCanLeft]   = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [sectionRef, inView]    = useInView();
+  const [loading, setLoading] = useState(true);
+  const [sectionRef, inView] = useInView();
   const fetched = useRef(false);
 
   // Fetch only when section enters viewport
@@ -716,10 +731,19 @@ function CategorySection({ categoryId, fetchFn }) {
 
           <div className="products-slider" ref={sliderRef}>
             {loading
-              ? [1,2,3,4,5].map(i => <SkeletonCard key={i} size="lg" />)
+              ? [1, 2, 3, 4, 5].map(i => <SkeletonCard key={i} size="lg" />)
               : products.length > 0
-                ? products.map(p => (
-                    <div key={p._id} style={{ width: 220, minWidth: 220, flexShrink: 0 }}>
+                  ? products.map((p, index) => (
+                    <div
+                      key={p._id}
+                      className="hp-product-card"
+                      style={{
+                        width: 220,
+                        minWidth: 220,
+                        flexShrink: 0,
+                        animationDelay: `${(sectionIndex * 6 + index) * 70}ms`
+                      }}
+                    >
                       <ProductCard product={p} size="lg" />
                     </div>
                   ))
@@ -773,17 +797,17 @@ const AnimatedCounter = memo(function AnimatedCounter({ end, duration = 2000, di
     return () => cancelAnimationFrame(raf);
   }, [end, duration]);
 
-  if (display.includes('K'))   return <>{(count / 1000).toFixed(0)}K+</>;
-  if (display.includes('%'))   return <>{(count / 1000).toFixed(1)}%</>;
+  if (display.includes('K')) return <>{(count / 1000).toFixed(0)}K+</>;
+  if (display.includes('%')) return <>{(count / 1000).toFixed(1)}%</>;
   if (display.includes('min')) return <>{'< 1min'}</>;
   return <>{count}</>;
 });
 
 const STATS = [
-  { value: 50000, display: '50K+',   label: 'Happy Customers',    icon: FaUsers,  color: '#22c55e' },
-  { value: 10000, display: '10K+',   label: 'Products Available', icon: FaBox,    color: '#3b82f6' },
-  { value: 99900, display: '99.9%',  label: 'Uptime',             icon: FaBolt,   color: '#a855f7' },
-  { value: 1,     display: '< 1min', label: 'Avg. Delivery Time', icon: FaRocket, color: '#f97316' },
+  { value: 50000, display: '50K+', label: 'Happy Customers', icon: FaUsers, color: '#22c55e' },
+  { value: 10000, display: '10K+', label: 'Products Available', icon: FaBox, color: '#3b82f6' },
+  { value: 99900, display: '99.9%', label: 'Uptime', icon: FaBolt, color: '#a855f7' },
+  { value: 1, display: '< 1min', label: 'Avg. Delivery Time', icon: FaRocket, color: '#f97316' },
 ];
 
 // ─────────────────────────────────────────────
@@ -858,7 +882,7 @@ const StatsStrip = memo(function StatsStrip() {
 // HOME PAGE
 // ─────────────────────────────────────────────
 export default function HomePage() {
-  const [featured, setFeatured]       = useState([]);
+  const [featured, setFeatured] = useState([]);
   const [featLoading, setFeatLoading] = useState(true);
 
   // Inject global styles once on mount
@@ -867,9 +891,9 @@ export default function HomePage() {
   // Fetch featured products
   useEffect(() => {
     productAPI.getAll({ featured: true, limit: 10 })
-  .then(res => setFeatured(res.data?.products || []))
-  .catch(() => setFeatured([]))
-  .finally(() => setFeatLoading(false));
+      .then(res => setFeatured(res.data?.products || []))
+      .catch(() => setFeatured([]))
+      .finally(() => setFeatLoading(false));
   }, []);
 
   // ✅ Stable fetch function passed to each CategorySection (no re-creation on re-renders)
@@ -930,8 +954,17 @@ export default function HomePage() {
           <div className="featured-scroll">
             {featLoading
               ? [...Array(6)].map((_, i) => <SkeletonCard key={i} />)
-              : featured.map(p => (
-                  <div key={p._id} style={{ width: 168, minWidth: 168, flexShrink: 0 }}>
+              : featured.map((p, index) => (
+                  <div
+                    key={p._id}
+                    className="hp-product-card"
+                    style={{
+                      width: 168,
+                      minWidth: 168,
+                      flexShrink: 0,
+                      animationDelay: `${index * 80}ms`
+                    }}
+                  >
                     <ProductCard product={p} />
                   </div>
                 ))
@@ -941,13 +974,14 @@ export default function HomePage() {
       </section>
 
       {/* ── Category Sections — each lazy-loaded independently ── */}
-      {CATEGORY_ORDER.map(cat => (
-        <CategorySection
-          key={cat}
-          categoryId={cat}
-          fetchFn={fetchCategory}
-        />
-      ))}
+          {CATEGORY_ORDER.map((cat, catIndex) => (
+            <CategorySection
+              key={cat}
+              categoryId={cat}
+              fetchFn={fetchCategory}
+              sectionIndex={catIndex}
+            />
+          ))}
     </div>
   );
 }

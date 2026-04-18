@@ -1,7 +1,8 @@
-const Order = require('../models/Order');
-const Product = require('../models/Product');
+const Order       = require('../models/Order');
+const Product     = require('../models/Product');
 const DigitalCode = require('../models/DigitalCode');
-const crypto = require('crypto');
+const crypto      = require('crypto');
+const emailService = require('../services/emailService');
 
 exports.getConfig = async (req, res) => {
   res.json({ success: true, publishableKey: 'fake_key', fakeMode: true });
@@ -26,13 +27,15 @@ exports.createPaymentIntent = async (req, res, next) => {
         return res.status(400).json({ success: false, message: `Product not found: ${item.productId}` });
       }
 
-      const available = await DigitalCode.countDocuments({
-        product: product._id,
-        isUsed: false
-      });
+      if (!product.isUnlimited) {
+        const available = await DigitalCode.countDocuments({
+          product: product._id,
+          isUsed: false
+        });
 
-      if (available < item.quantity) {
-        return res.status(400).json({ success: false, message: `Out of stock: ${product.name}` });
+        if (available < item.quantity) {
+          return res.status(400).json({ success: false, message: `Out of stock: ${product.name}` });
+        }
       }
 
       totalAmount += product.price * item.quantity;
@@ -95,6 +98,9 @@ exports.createPaymentIntent = async (req, res, next) => {
       totalAmount: finalAmount,
       fakeMode: true
     });
+
+    // تنبيه الأدمن بالأوردر الجديد (سايلنت فايل لا يوقف الدفع)
+    emailService.sendAdminNewOrderAlert(order, req.user).catch(() => {});
 
   } catch (err) {
     next(err);

@@ -34,6 +34,7 @@ export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
   const navigate = useNavigate();
+  const wishlistCount = user?.wishlist?.length || 0;
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -91,7 +92,6 @@ export default function Navbar() {
             
             {/* <NavLinkItem to="/categories">Categories</NavLinkItem> */}
       
-            <NavLinkItem to="/">Orders</NavLinkItem>
             
           </nav>
         </div>
@@ -110,6 +110,17 @@ export default function Navbar() {
             {itemCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-[#567245] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
                 {itemCount}
+              </span>
+            )}
+          </Link>
+
+          <Link to="/wishlist" className="relative text-[#889679] hover:text-white transition-colors hidden sm:block">
+            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 10-6.364-6.364L12 6.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {wishlistCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-[#567245] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                {wishlistCount}
               </span>
             )}
           </Link>
@@ -211,6 +222,7 @@ export default function Navbar() {
 
           <Link to="/" onClick={()=>setMenuOpen(false)} className="block text-white py-3 px-4">Home</Link>
           <Link to="/products" onClick={()=>setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Store</Link>
+          <Link to="/wishlist" onClick={()=>setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Wishlist</Link>
           <Link to="/categories" onClick={()=>setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Categories</Link>
           <Link to="/orders" onClick={()=>setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Orders</Link>
           <Link to="/profile" onClick={()=>setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Profile</Link>

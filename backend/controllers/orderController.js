@@ -2,7 +2,23 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const DigitalCode = require('../models/DigitalCode');
 const User = require('../models/User');
+const Log = require('../models/Log');
 const emailService = require('../services/emailService');
+
+// Helper: create an admin log entry (silent fail)
+const createLog = async (admin, action, target, details = '') => {
+  try {
+    await Log.create({
+      adminId: admin._id,
+      adminName: admin.name,
+      action,
+      target,
+      details
+    });
+  } catch (e) {
+    console.error('Log write failed:', e.message);
+  }
+};
 
 
 // @GET /api/orders/my
@@ -245,6 +261,7 @@ exports.updateOrderStatus = async (req, res, next) => {
 // ✅ ده اللي الأدمن هيستخدمه
 exports.confirmAndSend = async (req, res, next) => {
   try {
+    const { deliveryMode = 'database', deliveredCode } = req.body;
 
     let order = await Order.findById(req.params.id)
       .populate('items.product', 'name image category platform')
@@ -272,18 +289,84 @@ exports.confirmAndSend = async (req, res, next) => {
       });
     }
 
-    // ✅ اعمل Fulfillment الأول
-    order = await exports.fulfillOrder(order._id);
+    // ✅ اعمل Fulfillment الأول إذا كان delivery mode database
+    if (deliveryMode === 'database') {
+      order = await exports.fulfillOrder(order._id);
+    } else if (deliveryMode === 'manual') {
+      // Manual delivery - create a DigitalCode instance to satisfy the ObjectId references and track the code
+      if (!deliveredCode || !deliveredCode.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Code is required for manual delivery'
+        });
+      }
+
+      const session = await Order.startSession();
+      session.startTransaction();
+
+      try {
+        for (const item of order.items) {
+          // Create the DigitalCode for this manual entry
+          const newCode = new DigitalCode({
+            product: item.product._id || item.product,
+            code: deliveredCode,
+            isUsed: true,
+            usedBy: order.user._id || order.user,
+            usedAt: new Date(),
+            order: order._id,
+            addedBy: req.user._id,
+            notes: 'Manual delivery via Admin Dashboard'
+          });
+          
+          await newCode.save({ session });
+
+          item.codes = [newCode._id];
+          item.name = item.product.name;
+          item.image = item.product.image;
+        }
+
+        order.status = 'completed';
+        await order.save({ session });
+
+        await User.findByIdAndUpdate(
+          order.user._id,
+          { $addToSet: { orders: order._id } },
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+
+      // ✅ Repopulate order to guarantee emailService gets the actual string {code: '...'} instead of ObjectId
+      order = await Order.findById(order._id)
+        .populate('user', 'name email')
+        .populate('items.product', 'name image')
+        .populate('items.codes', 'code');
+    }
 
     // ✅ ابعت الإيميل
     emailService
       .sendOrderConfirmation(order.user, order)
       .catch(console.error);
 
+    // ✅ سجّل العملية في الـ Logs
+    await createLog(
+      req.user,
+      'CONFIRM_ORDER',
+      `Order #${order.orderNumber} — ${order.user?.name || 'Unknown'}`,
+      `Delivered via ${deliveryMode} — $${order.totalAmount?.toFixed(2)}`
+    );
+
     res.json({
       success: true,
       message: 'Codes sent to customer successfully!',
-      order
+      order,
+      deliveryMode
     });
 
   } catch (err) {

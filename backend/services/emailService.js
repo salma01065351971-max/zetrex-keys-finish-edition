@@ -1,10 +1,11 @@
 const nodemailer = require('nodemailer');
+const Settings   = require('../models/Settings');
 
 class EmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
+      host:   process.env.EMAIL_HOST,
+      port:   process.env.EMAIL_PORT,
       secure: process.env.EMAIL_PORT === '465',
       auth: {
         user: process.env.EMAIL_USER,
@@ -13,6 +14,7 @@ class EmailService {
     });
   }
 
+  /* ── core send ──────────────────────────────────────────────────────────── */
   async send({ to, subject, html }) {
     await this.transporter.sendMail({
       from: process.env.EMAIL_FROM || 'DigiVault <noreply@digivault.com>',
@@ -22,9 +24,29 @@ class EmailService {
     });
   }
 
+  /* ── helper: fetch email settings (cached loosely) ─────────────────────── */
+  async getEmailSettings() {
+    try {
+      const settings = await Settings.findOne().select('emailNotifications').lean();
+      return {
+        orderConfirmation: settings?.emailNotifications?.orderConfirmation ?? true,
+        welcomeEmail:      settings?.emailNotifications?.welcomeEmail      ?? true,
+        lowStockAlert:     settings?.emailNotifications?.lowStockAlert     ?? true,
+        adminNewOrder:     settings?.emailNotifications?.adminNewOrder     ?? false,
+      };
+    } catch {
+      // fallback: all on
+      return { orderConfirmation: true, welcomeEmail: true, lowStockAlert: true, adminNewOrder: false };
+    }
+  }
+
+  /* ── 1. Welcome email ──────────────────────────────────────────────────── */
   async sendWelcomeEmail(user) {
+    const cfg = await this.getEmailSettings();
+    if (!cfg.welcomeEmail) return;
+
     await this.send({
-      to: user.email,
+      to:      user.email,
       subject: 'Welcome to DigiVault! 🎮',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f1a;color:#fff;padding:40px;border-radius:12px;">
@@ -47,11 +69,15 @@ class EmailService {
     });
   }
 
+  /* ── 2. Order confirmation to customer ─────────────────────────────────── */
   async sendOrderConfirmation(user, order) {
+    const cfg = await this.getEmailSettings();
+    if (!cfg.orderConfirmation) return;
+
     const codesHtml = order.items.map(item => {
       const codes = item.codes.map(c => `
         <div style="background:#0f0f1a;border:1px solid #333;border-radius:6px;padding:12px;margin:8px 0;font-family:monospace;font-size:16px;color:#6366f1;letter-spacing:2px;text-align:center;">
-          ${c.code}
+          ${c.code || c}
         </div>
       `).join('');
 
@@ -65,7 +91,7 @@ class EmailService {
     }).join('');
 
     await this.send({
-      to: user.email,
+      to:      user.email,
       subject: `✅ Order Confirmed - ${order.orderNumber}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f1a;color:#fff;padding:40px;border-radius:12px;">
@@ -82,11 +108,121 @@ class EmailService {
             ${codesHtml}
           </div>
           <div style="background:#1a1a2e;border-radius:8px;padding:16px;margin:20px 0;">
-            <p style="color:#a0a0b8;margin:0;font-size:14px;">⚠️ Keep these codes safe. Each code can only be used once. DigiVault is not responsible for codes that have been shared or compromised.</p>
+            <p style="color:#a0a0b8;margin:0;font-size:14px;">⚠️ Keep these codes safe. Each code can only be used once.</p>
           </div>
           <a href="${process.env.FRONTEND_URL}/orders/${order._id}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
             View Order Details →
           </a>
+          <p style="color:#666;font-size:12px;margin-top:30px;">© 2024 DigiVault. All rights reserved.</p>
+        </div>
+      `
+    });
+  }
+
+  /* ── 3. Admin new order alert ───────────────────────────────────────────── */
+  async sendAdminNewOrderAlert(order, user) {
+    const cfg = await this.getEmailSettings();
+    if (!cfg.adminNewOrder) return;
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) return;
+
+    await this.send({
+      to:      adminEmail,
+      subject: `🛒 New Order #${order.orderNumber} — $${order.totalAmount?.toFixed(2)}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f1a;color:#fff;padding:40px;border-radius:12px;">
+          <h1 style="color:#6366f1;font-size:24px;margin-bottom:4px;">⚡ DigiVault</h1>
+          <p style="color:#71717a;font-size:12px;margin-bottom:30px;">Admin Notification</p>
+          <div style="background:#1a2a1a;border:1px solid #22c55e;border-radius:8px;padding:16px;margin-bottom:20px;">
+            <p style="color:#22c55e;font-size:16px;margin:0;font-weight:bold;">🛒 New Order Received</p>
+          </div>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="color:#71717a;padding:8px 0;">Order</td><td style="color:#fff;font-weight:bold;">#${order.orderNumber}</td></tr>
+            <tr><td style="color:#71717a;padding:8px 0;">Customer</td><td style="color:#fff;">${user?.name || 'Unknown'} (${user?.email || '—'})</td></tr>
+            <tr><td style="color:#71717a;padding:8px 0;">Amount</td><td style="color:#22c55e;font-weight:bold;font-size:18px;">$${order.totalAmount?.toFixed(2)}</td></tr>
+            <tr><td style="color:#71717a;padding:8px 0;">Items</td><td style="color:#fff;">${order.items?.length || 0} item(s)</td></tr>
+          </table>
+          <a href="${process.env.FRONTEND_URL}/admin/orders" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+            Review Order →
+          </a>
+          <p style="color:#666;font-size:12px;margin-top:30px;">This is an automated alert. © 2024 DigiVault.</p>
+        </div>
+      `
+    });
+  }
+
+  /* ── 4. Low stock alert to admin ───────────────────────────────────────── */
+  async sendLowStockAlert(products) {
+    const cfg = await this.getEmailSettings();
+    if (!cfg.lowStockAlert) return;
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || !products?.length) return;
+
+    const rows = products.map(p => `
+      <tr>
+        <td style="color:#fff;padding:10px 0;border-bottom:1px solid #222;">${p.name}</td>
+        <td style="padding:10px;border-bottom:1px solid #222;text-align:right;">
+          <span style="background:${p.stock === 0 ? '#7f1d1d' : '#78350f'};color:${p.stock === 0 ? '#fca5a5' : '#fcd34d'};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;">
+            ${p.stock === 0 ? 'OUT OF STOCK' : `${p.stock} left`}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    await this.send({
+      to:      adminEmail,
+      subject: `⚠️ Low Stock Alert — ${products.length} product(s) need attention`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f1a;color:#fff;padding:40px;border-radius:12px;">
+          <h1 style="color:#6366f1;font-size:24px;margin-bottom:4px;">⚡ DigiVault</h1>
+          <p style="color:#71717a;font-size:12px;margin-bottom:30px;">Inventory Alert</p>
+          <div style="background:#2a1a1a;border:1px solid #ef4444;border-radius:8px;padding:16px;margin-bottom:20px;">
+            <p style="color:#ef4444;font-size:16px;margin:0;font-weight:bold;">⚠️ Low Stock Warning</p>
+          </div>
+          <p style="color:#a0a0b8;">The following products are running low or out of stock:</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            ${rows}
+          </table>
+          <a href="${process.env.FRONTEND_URL}/admin/products" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+            Manage Inventory →
+          </a>
+          <p style="color:#666;font-size:12px;margin-top:30px;">This is an automated alert. © 2024 DigiVault.</p>
+        </div>
+      `
+    });
+  }
+
+  /* ── 5. Password Reset Email ───────────────────────────────────────────── */
+  async sendPasswordResetEmail(user, resetToken) {
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    await this.send({
+      to:      user.email,
+      subject: '🔒 Password Reset Request',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f1a;color:#fff;padding:40px;border-radius:12px;">
+          <div style="text-align:center;margin-bottom:30px;">
+            <h1 style="color:#6366f1;font-size:28px;margin:0;">⚡ DigiVault</h1>
+          </div>
+          <h2 style="color:#fff;">Password Reset Request</h2>
+          <p style="color:#a0a0b8;line-height:1.6;">
+            We received a request to reset the password for your DigiVault account associated with this email address. 
+            If you made this request, please click the button below to reset your password. This link is valid for 10 minutes.
+          </p>
+          <div style="text-align:center; margin: 30px 0;">
+            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+              Reset Password
+            </a>
+          </div>
+          <p style="color:#a0a0b8;font-size:14px;">
+            If the button doesn't work, copy and paste this link into your browser:<br/>
+            <span style="color:#6366f1;word-break:break-all;">${resetUrl}</span>
+          </p>
+          <div style="background:#1a1a2e;border-radius:8px;padding:16px;margin:20px 0;">
+            <p style="color:#a0a0b8;margin:0;font-size:14px;">⚠️ If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+          </div>
           <p style="color:#666;font-size:12px;margin-top:30px;">© 2024 DigiVault. All rights reserved.</p>
         </div>
       `

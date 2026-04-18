@@ -43,10 +43,10 @@ const orderSchema = new mongoose.Schema({
     default: 'USD'
   },
   status: {
-  type: String,
-  enum: ['paid_unconfirmed', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
-  default: 'paid_unconfirmed'
-},
+    type: String,
+    enum: ['paid_unconfirmed', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
+    default: 'paid_unconfirmed'
+  },
   paymentMethod: {
     type: String,
     enum: ['stripe', 'paymob', 'manual'],

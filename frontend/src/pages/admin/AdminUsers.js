@@ -3,153 +3,263 @@ import { adminAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
-const ROLES = ['user','editor','admin','manager','co-owner','owner'];
-const ROLE_COLORS = {
-  user:'text-gray-400', editor:'text-blue-400', admin:'text-purple-400',
-  manager:'text-amber-400', 'co-owner':'text-pink-400', owner:'text-yellow-400',
-};
+const ALL_ROLES = ['user', 'editor', 'admin', 'manager', 'co-owner', 'owner', 'hidden'];
+
+const PERMISSIONS_LIST = [
+  { id: 'manage_products',     label: 'Manage Products',      icon: '📦' },
+  { id: 'manage_orders',       label: 'Manage Orders',        icon: '🧾' },
+  { id: 'manage_maintenance',  label: 'Maintenance Mode',     icon: '🔧' },
+  { id: 'view_analytics',      label: 'Financial Analytics',  icon: '📊' },
+  { id: 'manage_users',        label: 'User Management',      icon: '👥' },
+  { id: 'manage_settings',     label: 'System Settings',      icon: '⚙️' },
+  { id: 'view_ledger',         label: 'Ledger Access',        icon: '💰' },
+];
+
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
-  const [users, setUsers]   = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
+  
+  // Modal States
+  const [editTarget, setEditTarget] = useState(null);
+  const [viewingActivity, setViewingActivity] = useState(null); 
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedPerms, setSelectedPerms] = useState([]);
+  const [expandedOrderId, setExpandedOrderId] = useState(null); // للتحكم في فتح الأوردر
 
-  useEffect(() => { loadUsers(); }, [search, roleFilter]);
+  useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const params = { limit: 100 };
-      if (search) params.search = search;
-      if (roleFilter) params.role = roleFilter;
-      const res = await adminAPI.getUsers(params);
+      const res = await adminAPI.getUsers({ limit: 100 });
       setUsers(res.data.users);
-    } catch { toast.error('Failed to load users'); }
-    finally { setLoading(false); }
-  };
-
-  const handleRoleChange = async (userId, newRole) => {
-    if (!window.confirm(`Change this user's role to "${newRole}"?`)) return;
-    try {
-      await adminAPI.updateUserRole(userId, newRole);
-      toast.success('Role updated');
-      loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    }
+      toast.error('Failed to load users');
+    } finally { setLoading(false); }
   };
 
-  const handleToggleStatus = async (userId, currentStatus) => {
-    const action = currentStatus ? 'deactivate' : 'activate';
-    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
-    try {
-      await adminAPI.toggleUserStatus(userId);
-      toast.success(`User ${action}d`);
-      loadUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    }
+  const togglePermission = (id) => {
+    setSelectedPerms(prev => 
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
   };
-
-  const meLevel = { user:0,editor:1,admin:2,manager:3,'co-owner':4,owner:5 };
 
   return (
-    <div className="page-enter pt-20 pb-16 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="font-display font-bold text-3xl text-white mb-8">Users <span className="text-gray-500 font-normal text-xl">({users.length})</span></h1>
-
-        <div className="flex gap-4 mb-6 flex-wrap">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="input-field max-w-xs"
-          />
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="input-field py-2 text-sm w-36">
-            <option value="">All Roles</option>
-            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+    <div className="min-h-screen bg-black text-white p-8 pt-24 font-sans">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold leading-none">Manage Users</h1>
+          <p className="text-sm text-white  font-normal">Terminal Access </p>
         </div>
-
-        <div className="glass rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {['User','Role','Status','Joined','Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-4 text-xs text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {loading ? [...Array(8)].map((_,i) => (
-                  <tr key={i}>{[...Array(5)].map((_,j) => <td key={j} className="px-4 py-4"><div className="skeleton h-4 rounded w-24"/></td>)}</tr>
-                )) : users.map(user => (
-                  <tr key={user._id} className="hover:bg-white/2 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {user.name?.[0]?.toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white flex items-center gap-2">
-                            {user.name}
-                            {user._id === me?._id && <span className="text-xs bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded">You</span>}
-                          </p>
-                          <p className="text-xs text-gray-500">{user.email}</p>
-                        </div>
+        
+        <div className="bg-zinc-900/40 border border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+          <table className="w-full text-left">
+            <thead className="bg-white/[0.02] text-xs text-neutral-100 border-b border-white/5 font-semibold">
+              <tr>
+                <th className="px-8 py-7">User Profile</th>
+                <th className="px-8 py-7 text-center">Investment_Stats</th>
+                <th className="px-8 py-7 text-center">Role</th>
+                <th className="px-8 py-7 text-right">Management</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {users.map(u => (
+                <tr key={u._id} className="hover:bg-white/[0.01] transition-all group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center font-bold group-hover:border-[#22c55e]/50 transition-all shadow-inner">
+                        {u.name?.[0].toUpperCase()}
                       </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      {/* Only allow role changes for users with lower level than me */}
-                      {user._id !== me?._id && (meLevel[me?.role]||0) > (meLevel[user.role]||0) ? (
-                        <select
-                          value={user.role}
-                          onChange={e => handleRoleChange(user._id, e.target.value)}
-                          className={`text-xs bg-surface-700 border border-white/10 rounded-lg px-2 py-1 outline-none cursor-pointer ${ROLE_COLORS[user.role]}`}
-                        >
-                          {ROLES.filter(r => (meLevel[r]||0) < (meLevel[me?.role]||0)).map(r => (
-                            <option key={r} value={r} style={{ background: '#1a1a35' }}>{r}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className={`text-sm capitalize font-medium ${ROLE_COLORS[user.role]}`}>{user.role}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={`badge text-xs ${user.isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4">
-                      {user._id !== me?._id && user.role !== 'owner' && (
-                        <button
-                          onClick={() => handleToggleStatus(user._id, user.isActive)}
-                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                            user.isActive
-                              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                              : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                          }`}
-                        >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!loading && users.length === 0 && (
-              <div className="text-center py-12 text-gray-500">No users found</div>
-            )}
-          </div>
+                      <div>
+                        <p className="text-sm font-semibold">{u.name}</p>
+                        <p className="text-xs text-zinc-600 font-mono">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-6 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                       <span className="text-xs text-[#22c55e] font-semibold">${u.totalSpent?.toFixed(2) || '0.00'}</span>
+                       <span className="text-[13px] text-zinc-600 font-normal">{u.orderCount || 0} Orders</span>
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-6 text-center">
+                    <span className="text-xs bg-zinc-800/80 px-3 py-1.5 rounded-lg font-semibold border border-white/10 text-zinc-400">
+                      {u.role}
+                    </span>
+                  </td>
+
+                  <td className="px-8 py-6 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button 
+                        onClick={() => { setViewingActivity(u); setExpandedOrderId(null); }}
+                        className="text-xs font-semibold py-2.5 px-6 rounded-xl bg-zinc-800 text-white border border-white/10 hover:bg-white hover:text-black transition-all"
+                      >
+                        Activity
+                      </button>
+                      <button 
+                        onClick={() => { setEditTarget(u); setSelectedRole(u.role); setSelectedPerms(u.permissions || []); }}
+                        className="text-xs font-semibold py-2.5 px-6 rounded-xl bg-white text-black hover:bg-[#22c55e] hover:text-white transition-all shadow-xl active:scale-95"
+                      >
+                        Access
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* --- ACTIVITY MODAL: عرض الأوردرات وجواها الأيتيمز --- */}
+      {viewingActivity && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl transition-all animate-in fade-in">
+          <div className="bg-[#0c0c0c] border border-white/10 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col max-h-[85vh]">
+            
+            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Activity Terminal</h2>
+                <p className="text-xs text-[#22c55e] font-semibold mt-1">Operator: {viewingActivity.name}</p>
+              </div>
+              <button 
+                onClick={() => setViewingActivity(null)}
+                className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all text-xl"
+              >✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar">
+              {viewingActivity.orderHistory && viewingActivity.orderHistory.length > 0 ? (
+                viewingActivity.orderHistory.map((order) => (
+                  <div key={order._id} className="bg-zinc-900/30 border border-white/5 rounded-[2rem] overflow-hidden group/order">
+                    {/* رأس الأوردر */}
+                    <div 
+                      onClick={() => setExpandedOrderId(expandedOrderId === order._id ? null : order._id)}
+                      className="p-6 flex justify-between items-center cursor-pointer hover:bg-white/[0.02] transition-all"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-zinc-600">Batch ID: {order._id.slice(-8)}</span>
+                        <span className="text-sm font-semibold text-white">{new Date(order.createdAt).toDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="text-xs text-zinc-600 mb-1">Value</p>
+                          <p className="text-lg font-bold text-[#22c55e]">${order.totalAmount?.toFixed(2)}</p>
+                        </div>
+                        <div className={`w-8 h-8 rounded-xl border border-white/10 flex items-center justify-center transition-all ${expandedOrderId === order._id ? 'rotate-180 bg-[#22c55e] border-[#22c55e] text-black' : 'bg-black'}`}>
+                          ↓
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* المنتجات داخل الأوردر (Items Inside Order) */}
+                    {expandedOrderId === order._id && (
+                      <div className="px-6 pb-6 pt-2 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="h-px bg-white/5 mb-4" />
+                        {order.items?.map((item, i) => (
+                          <div key={i} className="flex justify-between items-center p-4 bg-black/40 rounded-2xl border border-white/[0.03] hover:border-[#22c55e]/20">
+                           
+<div className="flex items-center gap-4">
+  <div className="w-12 h-12 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+    {item.image ? (
+      <img 
+        src={item.image} 
+        alt={item.name} 
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+      />
+    ) : (
+      <div className="text-[8px] font-black text-zinc-600 italic uppercase">No_Img</div>
+    )}
+  </div>
+  <div>
+    <p className="text-xs font-black text-white uppercase tracking-tight">{item.name}</p>
+    <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Quantity: {item.quantity}</p>
+  </div>
+</div>
+                            <span className="text-xs font-semibold text-white font-mono">${item.price?.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-32 opacity-50 text-xs font-normal">No Transactions In Memory</div>
+              )}
+            </div>
+
+            {/* الفوتر الخاص بالنافذة */}
+            <div className="p-10 bg-white/[0.01] border-t border-white/5 backdrop-blur-3xl flex justify-between items-center">
+              <div>
+                <p className="text-xs text-zinc-600 font-normal mb-1 text-left">Cumulative Worth</p>
+                <p className="text-3xl font-bold text-white leading-none">${viewingActivity.totalSpent?.toFixed(2)}</p>
+              </div>
+             
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ACCESS MODAL: التحكم بالرتب والصلاحيات --- */}
+      {editTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
+          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-8 text-white border-l-4 border-[#22c55e] pl-5">Permissions Module</h2>
+            <div className="space-y-6">
+              <div>
+                <label className="text-xs text-zinc-500 font-semibold mb-3 block">Authorization Level</label>
+                <select 
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl p-4 text-xs font-semibold outline-none focus:border-[#22c55e] transition-all"
+                >
+                  {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-xs text-zinc-500 font-semibold mb-3 block">Capability Stack</label>
+                <div className="space-y-2">
+                  {PERMISSIONS_LIST.map(perm => {
+                    const active = selectedPerms.includes(perm.id);
+                    return (
+                      <div 
+                        key={perm.id}
+                        onClick={() => togglePermission(perm.id)}
+                        className={`p-4 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${active ? 'bg-[#22c55e]/5 border-[#22c55e]/40' : 'bg-black border-white/5 opacity-40 hover:opacity-100'}`}
+                      >
+                        <span className="text-xs font-semibold">{perm.label}</span>
+                        <div className={`w-4 h-4 rounded border ${active ? 'bg-[#22c55e] border-[#22c55e]' : 'border-zinc-700'}`}></div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <button 
+                  onClick={async () => {
+                    try {
+                      await adminAPI.updateUserRole(editTarget._id, { role: selectedRole, permissions: selectedPerms });
+                      toast.success('PROTOCOL_UPDATED');
+                      setEditTarget(null);
+                      loadUsers();
+                    } catch (err) { toast.error('ERROR'); }
+                  }}
+                  className="py-4 bg-white text-black rounded-xl font-semibold text-xs hover:bg-[#22c55e] transition-all"
+                >Apply</button>
+                <button 
+                  onClick={() => setEditTarget(null)}
+                  className="py-4 bg-zinc-900 text-zinc-600 rounded-xl font-semibold text-xs border border-white/5"
+                >Abort</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

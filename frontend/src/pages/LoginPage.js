@@ -5,7 +5,10 @@ import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
-const ADMIN_ROLES = ['admin', 'manager', 'co-owner', 'owner', 'editor'];
+
+// List of roles that should be redirected to admin dashboard after login
+
+const ADMIN_ROLES = ['hidden', 'admin', 'manager', 'co-owner', 'owner', 'editor'];
 
 // ─────────────────────────────────────────────
 // OTP VERIFICATION SCREEN
@@ -54,6 +57,8 @@ function OTPVerificationForm({ email, otpToken, onSuccess, onBack }) {
     }
   };
 
+  
+
   const handleKeyDown = (index, e) => {
     // On backspace, clear current and go back
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
@@ -79,6 +84,7 @@ function OTPVerificationForm({ email, otpToken, onSuccess, onBack }) {
     if (pasted.length === 6) handleVerify(pasted);
   };
 
+  
   const handleVerify = async (otpValue = null) => {
     const finalOtp = otpValue || otp.join('');
     if (finalOtp.length !== 6) {
@@ -373,7 +379,7 @@ function SignInForm() {
       {/* Password Input */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-[10px] font-bold text-[#b4c89e] uppercase tracking-wide">Password</label>
+          <label className="block text-xs font-semibold text-[#b4c89e]">Password</label>
           <Link to="/forgot-password" className="text-[11px] font-medium text-[#889679] hover:text-[#c4d6a1] transition-colors">
             Forgot password?
           </Link>
@@ -523,7 +529,7 @@ function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Username Input */}
       <div>
-        <label className="block text-[10px] font-bold text-[#b4c89e] mb-1.5 uppercase tracking-wide">Username</label>
+        <label className="block text-xs font-semibold text-[#b4c89e] mb-1.5">Username</label>
         <input
           type="text"
           required
@@ -536,8 +542,8 @@ function RegisterForm() {
 
       {/* Phone Number Input */}
       <div>
-        <label className="block text-[10px] font-bold text-[#b4c89e] mb-1.5 uppercase tracking-wide">
-          Phone Number <span className="text-[#6e7d5e] font-normal tracking-normal lowercase text-[10px] ml-1">(optional)</span>
+        <label className="block text-xs font-semibold text-[#b4c89e] mb-1.5">
+          Phone Number <span className="text-[#6e7d5e] font-normal lowercase text-xs ml-1">(optional)</span>
         </label>
         <input
           type="tel"
@@ -550,7 +556,7 @@ function RegisterForm() {
 
       {/* Email Input */}
       <div>
-        <label className="block text-[10px] font-bold text-[#b4c89e] mb-1.5 uppercase tracking-wide">Email</label>
+        <label className="block text-xs font-semibold text-[#b4c89e] mb-1.5">Email</label>
         <input
           type="email"
           required
@@ -563,7 +569,7 @@ function RegisterForm() {
 
       {/* Password Input */}
       <div>
-        <label className="block text-[10px] font-bold text-[#b4c89e] mb-1.5 uppercase tracking-wide">Password</label>
+        <label className="block text-xs font-semibold text-[#b4c89e] mb-1.5">Password</label>
         <div className="relative">
           <input
             type={showPass ? 'text' : 'password'}

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
+import { authAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const CATEGORY_COLORS = {
   minecraft:    { text: '#5a9e38', bg: 'rgba(90,158,56,0.12)',  border: 'rgba(90,158,56,0.25)'  },
@@ -15,7 +18,10 @@ const CATEGORY_COLORS = {
 
 export default function ProductCard({ product }) {
   const { addItem } = useCart();
+  const { isAuthenticated, user, updateUser } = useAuth();
   const [hovered, setHovered] = useState(false);
+  const [wishlistBusy, setWishlistBusy] = useState(false);
+  const isWishlisted = !!user?.wishlist?.some?.((item) => item?._id === product._id || item === product._id);
 
   const discount = product.discountPercentage ||
     (product.originalPrice > product.price
@@ -25,6 +31,23 @@ export default function ProductCard({ product }) {
   const cat   = product.category?.toLowerCase() || '';
   const color = CATEGORY_COLORS[cat] || { text: '#22c55e', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.25)' };
   const label = product.platform || product.category || '';
+  const isOutOfStock = product.stock === 0 && !product.isUnlimited;
+
+  const toggleWishlist = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) return toast.error('Please sign in to use wishlist');
+    setWishlistBusy(true);
+    try {
+      const res = await authAPI.toggleWishlist(product._id);
+      updateUser({ wishlist: res.data.wishlist });
+      toast.success(res.data.inWishlist ? 'Added to wishlist' : 'Removed from wishlist');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Wishlist update failed');
+    } finally {
+      setWishlistBusy(false);
+    }
+  };
 
   return (
     <div
@@ -80,6 +103,7 @@ export default function ProductCard({ product }) {
             {product.region}
           </div>
         )}
+
       </Link>
 
       {/* ── Content ── */}
@@ -118,7 +142,7 @@ export default function ProductCard({ product }) {
         </h3>
 
         {/* Price + Button */}
-        <div style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e', fontFamily: 'Outfit, sans-serif' }}>
               ${product.price.toFixed(2)}
@@ -130,25 +154,51 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          <button
-            onClick={e => { e.preventDefault(); addItem(product); }}
-            disabled={product.stock === 0}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 10,
-              background: hovered ? '#22c55e' : 'rgba(34,197,94,0.12)',
-              border: `1px solid ${hovered ? '#22c55e' : 'rgba(34,197,94,0.3)'}`,
-              color: hovered ? '#0a150b' : '#22c55e',
-              fontSize: 12, fontWeight: 700,
-              fontFamily: 'Outfit, sans-serif',
-              cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap',
-              opacity: product.stock === 0 ? 0.4 : 1,
-            }}
-          >
-            {product.stock === 0 ? 'Out' : 'Add +'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+              onClick={toggleWishlist}
+              disabled={wishlistBusy}
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              style={{
+                width: 40,
+                height: 40,
+                border: 'none',
+                background: 'transparent',
+                color: isWishlisted ? '#f87171' : 'rgba(255,255,255,0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: wishlistBusy ? 'not-allowed' : 'pointer',
+                flexShrink: 0,
+                fontSize: 20,
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              {wishlistBusy ? '...' : (isWishlisted ? '♥' : '♡')}
+            </button>
+
+            <button
+              onClick={e => { e.preventDefault(); addItem(product); }}
+              disabled={isOutOfStock}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 10,
+                background: hovered ? '#22c55e' : 'rgba(34,197,94,0.12)',
+                border: `1px solid ${hovered ? '#22c55e' : 'rgba(34,197,94,0.3)'}`,
+                color: hovered ? '#0a150b' : '#22c55e',
+                fontSize: 12, fontWeight: 700,
+                fontFamily: 'Outfit, sans-serif',
+                cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+                opacity: isOutOfStock ? 0.4 : 1,
+              }}
+            >
+              {isOutOfStock ? 'Out' : 'Add +'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

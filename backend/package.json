@@ -2,6 +2,7 @@
   "name": "digivault-backend",
   "version": "1.0.0",
   "description": "DigiVault E-Commerce Backend API",
+  
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

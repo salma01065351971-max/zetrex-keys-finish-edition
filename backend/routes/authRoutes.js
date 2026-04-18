@@ -6,8 +6,12 @@ const ctrl = require('../controllers/authController');
 
 router.post('/register', ctrl.register);
 router.post('/login', ctrl.login);
+router.post('/forgot-password', ctrl.forgotPassword);
+router.put('/reset-password/:token', ctrl.resetPassword);
 router.post('/google', ctrl.googleAuth);
 router.get('/me', auth.protect, ctrl.getMe);
+router.get('/wishlist', auth.protect, ctrl.getWishlist);
+router.post('/wishlist/:productId', auth.protect, ctrl.toggleWishlist);
 router.put('/update-password', auth.protect, ctrl.updatePassword);
 router.put('/update-profile', auth.protect, ctrl.updateProfile);
 

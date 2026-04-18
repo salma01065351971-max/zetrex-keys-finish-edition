@@ -197,7 +197,7 @@ function StripeForm({ onSubmit, loading, total }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 fade-up">
       <div>
-        <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+        <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
           Cardholder Name
         </label>
         <input
@@ -209,7 +209,7 @@ function StripeForm({ onSubmit, loading, total }) {
       </div>
 
       <div>
-        <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+        <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
           Card Number
         </label>
         <div className="card-input-group">
@@ -228,7 +228,7 @@ function StripeForm({ onSubmit, loading, total }) {
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div>
-          <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
             Expiry Date
           </label>
           <input
@@ -240,7 +240,7 @@ function StripeForm({ onSubmit, loading, total }) {
           />
         </div>
         <div>
-          <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#889679', marginBottom:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
             CVC
           </label>
           <input

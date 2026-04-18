@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const emailService = require('../services/emailService');
 const { verifyGoogleToken } = require('../utils/googleVerify');
@@ -70,7 +71,14 @@ exports.login = async (req, res, next) => {
 // @GET /api/auth/me
 exports.getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).populate('orders', 'orderNumber totalAmount status createdAt');
+    const user = await User.findById(req.user.id).populate({
+      path: 'orders',
+      select: 'orderNumber totalAmount status createdAt paymentMethod currency items',
+      populate: {
+        path: 'items.product',
+        select: 'name image category'
+      }
+    }).populate('wishlist', 'name image price category slug isActive');
     res.json({ success: true, user });
   } catch (err) {
     next(err);
@@ -167,5 +175,95 @@ exports.googleAuth = async (req, res, next) => {
   } catch (err) {
     console.error('Google Auth Controller Error:', err);
     res.status(401).json({ success: false, message: 'Invalid Google authentication' });
+  }
+};
+
+// @GET /api/auth/wishlist
+exports.getWishlist = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).populate('wishlist', 'name image price category slug isActive');
+    res.json({ success: true, wishlist: user?.wishlist || [] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @POST /api/auth/wishlist/:productId
+exports.toggleWishlist = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const productId = req.params.productId;
+    const exists = user.wishlist.some(id => id.toString() === productId);
+
+    if (exists) {
+      user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+    } else {
+      user.wishlist.push(productId);
+    }
+
+    await user.save();
+    await user.populate('wishlist', 'name image price category slug isActive');
+
+    res.json({
+      success: true,
+      inWishlist: !exists,
+      wishlist: user.wishlist
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'There is no user with that email address.' });
+    }
+
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      await emailService.sendPasswordResetEmail(user, resetToken);
+      res.status(200).json({ success: true, message: 'Token sent to email!' });
+    } catch (err) {
+      console.error('Email send error:', err);
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      return res.status(500).json({ success: false, message: 'There was an error sending the email. Try again later!' });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @PUT /api/auth/reset-password/:token
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Token is invalid or has expired' });
+    }
+
+    user.password = req.body.password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordChangedAt = Date.now();
+    await user.save();
+
+    sendTokenResponse(user, 200, res);
+  } catch (err) {
+    next(err);
   }
 };

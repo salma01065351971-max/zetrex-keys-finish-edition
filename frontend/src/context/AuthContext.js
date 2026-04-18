@@ -16,6 +16,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [backendOnline, setBackendOnline] = useState(true);
 
+  const hasPermission = useCallback(
+  (permId) => {
+    if (!user) return false;
+    // الـ Owner والـ Hidden يملكون كل الصلاحيات دائماً
+    if (user.role === 'owner' || user.role === 'hidden') return true;
+    // التحقق من وجود الصلاحية في مصفوفة الصلاحيات الخاصة بالمستخدم
+    return user.permissions?.includes(permId);
+  },
+  [user]
+);
   useEffect(() => {
     let alive = true;
 
@@ -166,6 +176,7 @@ export const AuthProvider = ({ children }) => {
         register,
         googleLogin,
         logout,
+        hasPermission,
         updateUser,
         hasRole,
         setAuthToken,
