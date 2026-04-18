@@ -5,10 +5,16 @@ import './index.css';
 import App from './App';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
 root.render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || 'missing-client-id'}>
+    {googleClientId ? (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <App />
+      </GoogleOAuthProvider>
+    ) : (
       <App />
-    </GoogleOAuthProvider>
+    )}
   </React.StrictMode>
 );

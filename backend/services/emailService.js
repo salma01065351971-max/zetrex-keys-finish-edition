@@ -14,6 +14,14 @@ class EmailService {
     });
   }
 
+  getFrontendUrl() {
+    return (
+      process.env.FRONTEND_URL ||
+      process.env.CLIENT_URL ||
+      'https://zertexkey-2orq.vercel.app'
+    ).replace(/\/$/, '');
+  }
+
   /* ── core send ──────────────────────────────────────────────────────────── */
   async send({ to, subject, html }) {
     await this.transporter.sendMail({
@@ -44,6 +52,7 @@ class EmailService {
   async sendWelcomeEmail(user) {
     const cfg = await this.getEmailSettings();
     if (!cfg.welcomeEmail) return;
+    const frontendUrl = this.getFrontendUrl();
 
     await this.send({
       to:      user.email,
@@ -60,7 +69,7 @@ class EmailService {
           <div style="background:#1a1a2e;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #6366f1;">
             <p style="margin:0;color:#a0a0b8;">Account Email: <strong style="color:#fff;">${user.email}</strong></p>
           </div>
-          <a href="${process.env.FRONTEND_URL}/products" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+          <a href="${frontendUrl}/products" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
             Start Shopping →
           </a>
           <p style="color:#666;font-size:12px;margin-top:30px;">© 2024 DigiVault. All rights reserved.</p>
@@ -73,6 +82,7 @@ class EmailService {
   async sendOrderConfirmation(user, order) {
     const cfg = await this.getEmailSettings();
     if (!cfg.orderConfirmation) return;
+    const frontendUrl = this.getFrontendUrl();
 
     const codesHtml = order.items.map(item => {
       const codes = item.codes.map(c => `
@@ -110,7 +120,7 @@ class EmailService {
           <div style="background:#1a1a2e;border-radius:8px;padding:16px;margin:20px 0;">
             <p style="color:#a0a0b8;margin:0;font-size:14px;">⚠️ Keep these codes safe. Each code can only be used once.</p>
           </div>
-          <a href="${process.env.FRONTEND_URL}/orders/${order._id}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+          <a href="${frontendUrl}/orders/${order._id}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
             View Order Details →
           </a>
           <p style="color:#666;font-size:12px;margin-top:30px;">© 2024 DigiVault. All rights reserved.</p>
@@ -123,6 +133,7 @@ class EmailService {
   async sendAdminNewOrderAlert(order, user) {
     const cfg = await this.getEmailSettings();
     if (!cfg.adminNewOrder) return;
+    const frontendUrl = this.getFrontendUrl();
 
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return;
@@ -143,7 +154,7 @@ class EmailService {
             <tr><td style="color:#71717a;padding:8px 0;">Amount</td><td style="color:#22c55e;font-weight:bold;font-size:18px;">$${order.totalAmount?.toFixed(2)}</td></tr>
             <tr><td style="color:#71717a;padding:8px 0;">Items</td><td style="color:#fff;">${order.items?.length || 0} item(s)</td></tr>
           </table>
-          <a href="${process.env.FRONTEND_URL}/admin/orders" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+          <a href="${frontendUrl}/admin/orders" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
             Review Order →
           </a>
           <p style="color:#666;font-size:12px;margin-top:30px;">This is an automated alert. © 2024 DigiVault.</p>
@@ -156,6 +167,7 @@ class EmailService {
   async sendLowStockAlert(products) {
     const cfg = await this.getEmailSettings();
     if (!cfg.lowStockAlert) return;
+    const frontendUrl = this.getFrontendUrl();
 
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail || !products?.length) return;
@@ -185,7 +197,7 @@ class EmailService {
           <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${rows}
           </table>
-          <a href="${process.env.FRONTEND_URL}/admin/products" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+          <a href="${frontendUrl}/admin/products" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
             Manage Inventory →
           </a>
           <p style="color:#666;font-size:12px;margin-top:30px;">This is an automated alert. © 2024 DigiVault.</p>
@@ -196,7 +208,7 @@ class EmailService {
 
   /* ── 5. Password Reset Email ───────────────────────────────────────────── */
   async sendPasswordResetEmail(user, resetToken) {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${this.getFrontendUrl()}/reset-password/${resetToken}`;
 
     await this.send({
       to:      user.email,

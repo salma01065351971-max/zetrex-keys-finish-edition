@@ -662,22 +662,47 @@ const AccountTab = ({ user, updateUser, onAvatarChange }) => {
   );
 };
 
-// ── Orders Tab (upgraded) ────────────────────────────────────────────────────
+// ── Orders Tab ────────────────────────────────────────────────────────────────
 const OrdersTab = ({ user }) => {
-    const [openOrderId, setOpenOrderId] = useState(null);
-    const orders = [...(user?.orders || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const completed = orders.filter(o => o.status === 'completed' || o.status === 'paid').length;
-  const pending = orders.filter(o => o.status === 'pending' || o.status === 'paid_unconfirmed' || o.status === 'processing').length;
-  const totalSpent = orders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
-  const lastOrder = orders[0];
-  const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
-  const formatDate = (value) => value
-    ? new Date(value).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
-    : 'N/A';
+  const [openOrderId, setOpenOrderId] = useState(null);
+  const orders = [...(user?.orders || [])].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  const completed = orders.filter(o =>
+    ['completed', 'paid', 'fulfilled'].includes(o.status)
+  ).length;
+  const pending = orders.filter(o =>
+    ['pending', 'paid_unconfirmed', 'processing'].includes(o.status)
+  ).length;
+  const totalSpent = orders.reduce(
+    (acc, o) => acc + (Number(o.totalAmount) || 0), 0
+  );
+
+  const formatMoney = v => `$${Number(v || 0).toFixed(2)}`;
+  const formatDate = v =>
+    v ? new Date(v).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+  const formatTime = v =>
+    v ? new Date(v).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+
+  const statusMeta = status => {
+    const v = (status || 'pending').toLowerCase();
+    if (['completed', 'paid', 'fulfilled'].includes(v))
+      return { label: 'Completed', color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.18)' };
+    if (['processing', 'paid_unconfirmed'].includes(v))
+      return { label: 'Processing', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.18)' };
+    if (['cancelled', 'canceled', 'failed'].includes(v))
+      return { label: 'Cancelled', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.18)' };
+    return { label: 'Pending', color: '#889679', bg: 'rgba(136,150,121,0.08)', border: 'rgba(136,150,121,0.18)' };
+  };
+
+  const paymentLabel = method => {
+    const v = (method || '').toLowerCase();
+    if (v === 'paypal') return 'PayPal';
+    if (v === 'stripe') return 'Stripe';
+    if (v === 'paymob') return 'Paymob';
+    return v.replace(/_/g, ' ') || 'N/A';
+  };
 
   if (!orders.length) return (
     <div className="fu">
@@ -689,253 +714,208 @@ const OrdersTab = ({ user }) => {
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <p style={{fontSize:14, color:'#4a5a3a', margin:0, fontFamily:'Manrope,sans-serif', fontWeight:600}}>No orders yet</p>
-        <p style={{fontSize:12, color:'#3a4a2a', margin:0, fontFamily:'Manrope,sans-serif'}}>Your purchase history will appear here</p>
+        <p style={{ fontSize: 14, color: '#4a5a3a', margin: 0, fontFamily: 'Manrope,sans-serif', fontWeight: 600 }}>
+          No orders yet
+        </p>
+        <p style={{ fontSize: 12, color: '#3a4a2a', margin: 0, fontFamily: 'Manrope,sans-serif' }}>
+          Your purchase history will appear here
+        </p>
       </div>
     </div>
-    );
+  );
 
   return (
     <div className="fu">
       <SectionTitle title="Orders" sub={`${orders.length} order${orders.length !== 1 ? 's' : ''} total`} />
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        gap: 12,
-        marginBottom: 18
-      }}>
+      {/* ── Stats ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 24 }}>
         {[
-          { label: 'Orders', value: orders.length },
+          { label: 'Total Orders', value: orders.length },
           { label: 'Completed', value: completed },
-          { label: 'Spent', value: formatMoney(totalSpent) }
-        ].map((item, index) => (
-          <div key={item.label} style={{
-            padding: '16px 18px',
-            borderRadius: 14,
-            background: 'linear-gradient(180deg, rgba(17,20,8,0.96), rgba(12,15,8,0.96))',
-            border: '1px solid #1e2517',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
-            animationDelay: `${index * 60}ms`
-          }} className={`fu${index + 1}`}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em' }}>
-              {item.label}
-            </div>
-            <div style={{ marginTop: 8, fontFamily: 'Manrope, sans-serif', fontSize: item.label === 'Spent' ? 22 : 24, fontWeight: 800, color: '#e8f0e0' }}>
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {lastOrder && (
-        <div style={{
-          marginBottom: 18,
-          padding: '16px 18px',
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(249,115,22,0.06), rgba(86,114,69,0.08))',
-          border: '1px solid rgba(249,115,22,0.15)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '.14em', textTransform: 'uppercase' }}>
-                Latest Order
-              </div>
-              <div style={{ marginTop: 6, color: '#e8f0e0', fontFamily: 'Manrope, sans-serif', fontSize: 18, fontWeight: 700 }}>
-                {lastOrder.orderNumber || '—'}
-              </div>
-              <div style={{ marginTop: 4, fontSize: 12, color: '#6b7c5a' }}>
-                {formatDate(lastOrder.createdAt)} · {lastOrder.status || 'pending'}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em' }}>
-                Total
-              </div>
-              <div style={{ marginTop: 6, fontFamily: 'Manrope, sans-serif', fontSize: 26, fontWeight: 800, color: '#e8f0e0' }}>
-                {formatMoney(lastOrder.totalAmount)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Row */}
-      <div className="stats-row">
-        {[
-          { label:'Total Orders',   value:orders.length,       suffix:'' },
-          { label:'In Progress',    value:pending,             suffix:'' },
-          { label:'Total Spent',    value:`$${totalSpent.toFixed(0)}`, suffix:'' },
+          { label: 'Total Spent', value: formatMoney(totalSpent) },
         ].map((s, i) => (
-          <div className={`stat-card fu${i+1}`} key={i}>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
+          <div key={s.label} className={`fu${i + 1}`} style={{
+            padding: '14px 16px',
+            borderRadius: 12,
+            background: '#111408',
+            border: '1px solid #1e2517',
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontFamily: 'Manrope,sans-serif' }}>
+              {s.label}
+            </div>
+            <div style={{ marginTop: 8, fontFamily: 'Manrope,sans-serif', fontSize: 22, fontWeight: 800, color: '#e8f0e0' }}>
+              {s.value}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Orders Grid */}
-      <div className="orders-grid">
-        {orders.map((order, i) => (
-            <button
+      {/* ── Orders List ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {orders.map((order, i) => {
+          const meta = statusMeta(order.status);
+          const isOpen = openOrderId === order._id;
+
+          return (
+            <div
               key={order._id}
-              type="button"
-              className={`order-card fu${Math.min(i+1,4)}`}
-              onClick={() => setOpenOrderId(prev => prev === order._id ? null : order._id)}
-              style={{
-                background: order.status === 'completed'
-                  ? 'linear-gradient(180deg, rgba(17,20,8,0.96), rgba(12,15,8,0.96))'
-                  : 'linear-gradient(180deg, rgba(17,20,8,0.9), rgba(12,15,8,0.92))',
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                color: 'inherit'
-              }}
-              aria-expanded={openOrderId === order._id}
+              className={`order-card fu${Math.min(i + 1, 4)}`}
+              style={{ background: '#111408' }}
             >
-              <div className="order-card-top">
-                  <div style={{ minWidth: 0 }}>
-                  <div className="order-number">#{order.orderNumber || 'N/A'}</div>
-                  <div className="order-date" style={{marginTop:5}}>
-                    {formatDate(order.createdAt)}
-                  </div>
+              {/* ── Card Header ── */}
+              <button
+                type="button"
+                onClick={() => setOpenOrderId(prev => prev === order._id ? null : order._id)}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '16px 20px',
+                  textAlign: 'left',
+                  color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+                aria-expanded={isOpen}
+              >
+                {/* Left: order number + date + item count */}
+                <div style={{ minWidth: 0 }}>
                   <div style={{
-                    marginTop: 8,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '3px 9px',
-                    borderRadius: 999,
-                    background: 'rgba(86,114,69,0.1)',
-                    border: '1px solid rgba(86,114,69,0.2)',
-                    color: '#889679',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase'
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#c4d6a1',
+                    letterSpacing: '.04em',
                   }}>
-                    {order.items?.length || 0} items
+                    #{order.orderNumber || 'N/A'}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 11.5, color: '#6b7c5a', fontFamily: 'Manrope,sans-serif' }}>
+                    {formatDate(order.createdAt)} · {formatTime(order.createdAt)}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {/* Status pill */}
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '3px 9px', borderRadius: 999,
+                      background: meta.bg, border: `1px solid ${meta.border}`,
+                      color: meta.color, fontSize: 10, fontWeight: 700,
+                      letterSpacing: '.1em', textTransform: 'uppercase',
+                      fontFamily: 'Manrope,sans-serif',
+                    }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: meta.color, display: 'inline-block', flexShrink: 0 }} />
+                      {meta.label}
+                    </span>
+                    {/* Item count */}
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '3px 9px', borderRadius: 999,
+                      background: 'rgba(86,114,69,0.1)', border: '1px solid rgba(86,114,69,0.2)',
+                      color: '#889679', fontSize: 10, fontWeight: 700,
+                      letterSpacing: '.1em', textTransform: 'uppercase',
+                      fontFamily: 'Manrope,sans-serif',
+                    }}>
+                      {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
-                <div style={{textAlign:'right'}}>
-                  <div className="order-amount-label">Total</div>
-                  <div className="order-amount">{formatMoney(order.totalAmount)}</div>
+
+                {/* Right: total + chevron */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.1em', fontFamily: 'Manrope,sans-serif' }}>
+                    Total
+                  </div>
+                  <div style={{ marginTop: 4, fontFamily: 'Manrope,sans-serif', fontSize: 22, fontWeight: 800, color: '#e8f0e0' }}>
+                    {formatMoney(order.totalAmount)}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, color: '#3a4a2a', fontFamily: 'Manrope,sans-serif', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                    {isOpen ? 'Hide details' : 'View details'}
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                      style={{ transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-              <div className="order-card-bottom">
-                <StatusBadge status={order.status} />
-                <div style={{
-                  fontSize:11, color:'#3a4a2a', fontFamily:'Manrope,sans-serif',
-                  display:'flex', alignItems:'center', gap:4,
-              }}>
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {new Date(order.createdAt).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})}
-                  <span style={{
-                    marginLeft: 8,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#889679',
-                    letterSpacing: '.08em',
-                    textTransform: 'uppercase'
-                  }}>
-                    {openOrderId === order._id ? 'Hide details' : 'View details'}
-                  </span>
-                </div>
-              </div>
-              {openOrderId === order._id && (
-                <div style={{
-                  padding: '0 20px 18px',
-                  borderTop: '1px solid rgba(30,37,23,0.9)',
-                  background: 'rgba(0,0,0,0.12)'
-                }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    gap: 10,
-                    marginTop: 14
-                  }}>
-                    <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517' }}>
-                      <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700 }}>Payment</div>
-                      <div style={{ marginTop: 6, color: '#e8f0e0', fontSize: 13 }}>{order.paymentMethod || 'stripe'}</div>
-                    </div>
-                    <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517' }}>
-                      <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700 }}>Items</div>
-                      <div style={{ marginTop: 6, color: '#e8f0e0', fontSize: 13 }}>{order.items?.length || 0}</div>
-                    </div>
+              </button>
+
+              {/* ── Expanded Details ── */}
+              {isOpen && (
+                <div style={{ borderTop: '1px solid #1e2517', padding: '16px 20px 20px', background: 'rgba(0,0,0,0.12)' }}>
+                  {/* Meta row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 14 }}>
+                    {[
+                      { label: 'Payment', value: paymentLabel(order.paymentMethod) },
+                      { label: 'Order ID', value: order.orderNumber || '—' },
+                    ].map(item => (
+                      <div key={item.label} style={{
+                        padding: '10px 14px', borderRadius: 10,
+                        background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517',
+                      }}>
+                        <div style={{ fontSize: 10, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 700, fontFamily: 'Manrope,sans-serif' }}>
+                          {item.label}
+                        </div>
+                        <div style={{ marginTop: 5, color: '#e8f0e0', fontSize: 13, fontWeight: 600, fontFamily: 'Manrope,sans-serif' }}>
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
+                  {/* Items list */}
                   {!!order.items?.length && (
-                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4a5a3a', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 4, fontFamily: 'Manrope,sans-serif' }}>
+                        Items
+                      </div>
                       {order.items.map((item, idx) => (
                         <div key={`${order._id}-${idx}`} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: 10,
-                          padding: '10px 12px',
-                          borderRadius: 12,
-                          background: 'rgba(255,255,255,0.02)',
-                          border: '1px solid #1e2517'
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          gap: 10, padding: '10px 14px', borderRadius: 10,
+                          background: 'rgba(255,255,255,0.02)', border: '1px solid #1e2517',
                         }}>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ color: '#e8f0e0', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{
+                              color: '#e8f0e0', fontSize: 13, fontWeight: 600,
+                              fontFamily: 'Manrope,sans-serif',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
                               {item.name || item.product?.name || 'Item'}
                             </div>
-                            <div style={{ color: '#6b7c5a', fontSize: 11, marginTop: 2 }}>
+                            <div style={{ color: '#6b7c5a', fontSize: 11, marginTop: 2, fontFamily: 'Manrope,sans-serif' }}>
                               Qty {item.quantity || 1}
                               {item.codes?.length ? ` · ${item.codes.length} codes` : ''}
                             </div>
                           </div>
-                          <div style={{ color: '#c4d6a1', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                            {formatMoney(item.price)}
+                          <div style={{ color: '#c4d6a1', fontSize: 13, fontWeight: 700, flexShrink: 0, fontFamily: 'Manrope,sans-serif' }}>
+                            {formatMoney((Number(item.price) || 0) * (Number(item.quantity) || 1))}
                           </div>
                         </div>
                       ))}
+
+                      {/* Total row */}
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '10px 14px', marginTop: 4, borderRadius: 10,
+                        background: 'rgba(86,114,69,0.06)', border: '1px solid rgba(86,114,69,0.15)',
+                      }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#567245', textTransform: 'uppercase', letterSpacing: '.1em', fontFamily: 'Manrope,sans-serif' }}>
+                          Order Total
+                        </span>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: '#c4d6a1', fontFamily: 'Manrope,sans-serif' }}>
+                          {formatMoney(order.totalAmount)}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-              {!!order.items?.length && (
-                <div style={{
-                  padding: '0 20px 18px',
-                  display: 'flex',
-                  gap: 8,
-                flexWrap: 'wrap'
-              }}>
-                {order.items.slice(0, 3).map((item, idx) => (
-                  <span key={`${order._id}-${idx}`} style={{
-                    fontSize: 11,
-                    color: '#6b7c5a',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid #1e2517',
-                    borderRadius: 999,
-                    padding: '5px 10px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '100%'
-                  }}>
-                    {item.name || item.product?.name || 'Item'} × {item.quantity || 1}
-                  </span>
-                ))}
-                {order.items.length > 3 && (
-                  <span style={{
-                    fontSize: 11,
-                    color: '#889679',
-                    background: 'rgba(86,114,69,0.08)',
-                    border: '1px solid rgba(86,114,69,0.18)',
-                    borderRadius: 999,
-                    padding: '5px 10px'
-                  }}>
-                    +{order.items.length - 3} more
-                  </span>
-                )}
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

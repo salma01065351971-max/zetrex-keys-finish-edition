@@ -35,6 +35,10 @@ export const CartProvider = ({ children }) => {
       toast.error('Please login to add items to cart');
       return;
     }
+    if (!product?.isUnlimited && !Number(product?.stock || 0)) {
+      toast.error('Product is out of stock');
+      return;
+    }
     try {
       const res = await cartAPI.addItem(product._id, quantity);
       setItems(res.data.cart.items || []);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../services/api';
+import { getImageUrl } from '../../utils/imageUrl';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -164,9 +165,9 @@ export default function AdminUsers() {
                            
 <div className="flex items-center gap-4">
   <div className="w-12 h-12 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
-    {item.image ? (
+    {getImageUrl(item.image) ? (
       <img 
-        src={item.image} 
+        src={getImageUrl(item.image)} 
         alt={item.name} 
         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
       />

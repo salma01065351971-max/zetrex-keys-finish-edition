@@ -274,7 +274,7 @@ export default function AdminFinancials() {
     }
     setDownloading(true);
     try {
-      const headers = ['Transaction ID', 'Customer Name', 'Email', 'Status', 'Amount (USD)', 'Date'];
+      const headers = ['Transaction ID', 'Customer Name', 'Email', 'Status', 'Method', 'Amount (USD)', 'Date'];
       const rows = transactionsToDownload.map(tx => {
         const dateObj = tx.date || tx.createdAt || tx.transactionDate;
         const date = dateObj
@@ -285,6 +285,7 @@ export default function AdminFinancials() {
           `"${(tx.user?.name || 'Anonymous User').replace(/"/g, '""')}"`,
           tx.user?.email || 'N/A',
           tx.status || 'COMPLETED',
+          tx.paymentMethod ? tx.paymentMethod.toUpperCase() : 'UNKNOWN',
           tx.totalAmount || 0,
           `"${date}"`,
         ];
@@ -494,11 +495,11 @@ export default function AdminFinancials() {
             <table className="w-full min-w-[720px]">
               <thead>
                 <tr className="border-b border-zinc-800/80">
-                  {['Transaction ID', 'Customer', 'Status', 'Amount'].map((h, i) => (
+                  {['Transaction ID', 'Customer', 'Status', 'Method', 'Amount'].map((h, i) => (
                     <th
                       key={h}
                       className="px-8 py-5 text-xs uppercase tracking-widest text-zinc-600 font-medium"
-                      style={{ textAlign: i === 3 ? 'right' : 'left' }}
+                      style={{ textAlign: i === 4 ? 'right' : 'left' }}
                     >
                       {h}
                     </th>
@@ -546,6 +547,11 @@ export default function AdminFinancials() {
                         {tx.status || 'COMPLETED'}
                       </span>
                     </td>
+                    <td className="px-8 py-5">
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-300 bg-zinc-800 border border-zinc-700 px-2.5 py-1 rounded-md">
+                        {tx.paymentMethod || 'UNKNOWN'}
+                      </span>
+                    </td>
                     <td className="px-8 py-5 text-right">
                       <span className="text-lg font-semibold text-white tabular-nums">
                         ${Number(tx.totalAmount || 0).toFixed(2)}
@@ -556,7 +562,7 @@ export default function AdminFinancials() {
 
                 {(!data?.transactions || data.transactions.length === 0) && (
                   <tr>
-                    <td colSpan={4} className="px-8 py-16 text-center text-zinc-600 text-sm">
+                    <td colSpan={5} className="px-8 py-16 text-center text-zinc-600 text-sm">
                       No transactions found
                     </td>
                   </tr>

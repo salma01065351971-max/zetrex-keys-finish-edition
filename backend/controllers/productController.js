@@ -127,7 +127,7 @@ exports.createProduct = async (req, res, next) => {
     // ✅ التحقق من وجود ملف صورة مرفوع بواسطة Multer
     if (req.file) {
       // نخزن المسار الذي سيتعرف عليه السيرفر لاحقاً لعرض الصورة
-      productData.image = `/uploads/${req.file.filename}`;
+      productData.image = req.file.path; // Cloudinary URL
     }
 
     // ✅ معالجة الـ Tags (لأن FormData تحول المصفوفة لنص)
@@ -154,7 +154,7 @@ exports.updateProduct = async (req, res, next) => {
 
     // ✅ إذا تم رفع صورة جديدة، نقوم بتحديث مسار الصورة
     if (req.file) {
-      productData.image = `/uploads/${req.file.filename}`;
+      productData.image = req.file.path; // Cloudinary URL
     }
 
     // ✅ معالجة الـ Tags عند التحديث

@@ -27,6 +27,22 @@ exports.addItem = async (req, res, next) => {
     }
 
     const cart = await getOrCreateCart(req.user.id);
+
+    if (!product.isUnlimited) {
+      const available = Number(product.stock || 0);
+      if (available <= 0 || product.isOutOfStock) {
+        return res.status(400).json({ success: false, message: 'Product is out of stock' });
+      }
+
+      const currentInCart = cart.items.find(i => i.product.toString() === productId)?.quantity || 0;
+      if (currentInCart + quantity > available) {
+        return res.status(400).json({
+          success: false,
+          message: `Only ${available - currentInCart} item(s) left in stock`
+        });
+      }
+    }
+
     const existingIndex = cart.items.findIndex(
       i => i.product.toString() === productId
     );
@@ -57,10 +73,28 @@ exports.updateItem = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Quantity must be at least 1' });
     }
 
+    const product = await Product.findById(productId);
+    if (!product || !product.isActive) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
     const cart = await getOrCreateCart(req.user.id);
     const item = cart.items.find(i => i.product.toString() === productId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found in cart' });
+    }
+
+    if (!product.isUnlimited) {
+      const available = Number(product.stock || 0);
+      if (available <= 0 || product.isOutOfStock) {
+        return res.status(400).json({ success: false, message: 'Product is out of stock' });
+      }
+      if (quantity > available) {
+        return res.status(400).json({
+          success: false,
+          message: `Only ${available} item(s) available`
+        });
+      }
     }
 
     item.quantity = quantity;

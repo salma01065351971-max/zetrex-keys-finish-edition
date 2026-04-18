@@ -57,6 +57,9 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
+// ─── Static Files (Uploaded Images) ─────────────────────────────────────────
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/users',    require('./routes/userRoutes'));

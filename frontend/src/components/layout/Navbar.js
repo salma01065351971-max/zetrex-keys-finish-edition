@@ -79,7 +79,7 @@ export default function Navbar() {
               </svg>
             </div>
             <span className="font-bold text-[19px] text-[#f5f5f5] tracking-tight">
-              ZERTEX
+              ZetrexKeys
             </span>
           </Link>
 

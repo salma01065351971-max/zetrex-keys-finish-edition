@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { paymentAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../utils/imageUrl';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
@@ -333,81 +334,61 @@ export default function CheckoutPage() {
   const [method, setMethod] = useState('stripe');
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
-  const [orderId, setOrderId] = useState('');
   const [error, setError] = useState('');
 
-  // حماية ضد التكرار (خصوصاً مع React.StrictMode)
-  const initSigRef = useRef('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // نتحقق بس إن الكارت مش فاضي ونقفل الـ initLoading
   useEffect(() => {
-    if (isEmpty) { 
-      navigate('/cart'); 
-      return; 
+    if (isEmpty) {
+      navigate('/cart');
+      return;
     }
-    const signature = items
-      .map(i => `${i.product?.toString() || i.productId}:${i.quantity}`)
-      .sort()
-      .join('|');
-    if (!signature || initSigRef.current === signature) return;
-    initSigRef.current = signature;
-    initCheckout();
-  }, [isEmpty, items, navigate]);
+    setInitLoading(false);
+  }, [isEmpty, navigate]);
 
-  const initCheckout = async () => {
-    setInitLoading(true);
-    setError('');
-    try {
-      const res = await paymentAPI.createPaymentIntent(
-        items.map(i => ({
-          productId: i.product?.toString() || i.productId,
-          quantity: i.quantity
-        }))
-      );
-      setOrderId(res.data.orderId);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to initialize checkout');
-    } finally {
-      setInitLoading(false);
-    }
-  };
-
-  const handleStripeSubmit = async (cardData) => {
-    if (isSubmitting || !orderId) return;
-
+  // ── دالة مشتركة بتنشئ الأوردر وتأكده بالـ method الصح ──
+  const processPayment = async (selectedMethod) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setLoading(true);
 
     try {
-      await paymentAPI.confirmPayment(orderId);
+      // ننشئ الأوردر هنا بالـ method الصح اللي اختاره اليوزر
+      const intentRes = await paymentAPI.createPaymentIntent({
+        items: items.map(i => ({
+          productId: i.product?.toString() || i.productId,
+          quantity: i.quantity,
+        })),
+        method: selectedMethod,
+      });
+
+      const newOrderId = intentRes.data.orderId;
+
+      // نأكد الدفع
+      await paymentAPI.confirmPayment(newOrderId);
+
       clearCart();
-      toast.success('Payment successful! 🎉');
-      navigate(`/orders/${orderId}`);
+      toast.success(
+        selectedMethod === 'paypal'
+          ? 'PayPal payment successful! 🎉'
+          : 'Payment successful! 🎉'
+      );
+      navigate(`/orders/${newOrderId}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Payment failed');
+      toast.error(err.response?.data?.message || 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
       setIsSubmitting(false);
     }
+  };
+
+  const handleStripeSubmit = async (_cardData) => {
+    await processPayment('stripe');
   };
 
   const handlePayPalSubmit = async () => {
-    if (isSubmitting || !orderId) return;
-
-    setIsSubmitting(true);
-    setLoading(true);
-
-    try {
-      await paymentAPI.confirmPayment(orderId);
-      clearCart();
-      toast.success('PayPal payment successful! 🎉');
-      navigate(`/orders/${orderId}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'PayPal payment failed');
-    } finally {
-      setLoading(false);
-      setIsSubmitting(false);
-    }
+    await processPayment('paypal');
   };
 
   if (initLoading) return (
@@ -428,11 +409,11 @@ export default function CheckoutPage() {
       <div style={{ fontSize:56 }}>⚠️</div>
       <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:26, color:'#e8f0e0', margin:0 }}>Checkout Error</h2>
       <p style={{ color:'#4a5a3a', fontSize:14, fontFamily:'Outfit,sans-serif' }}>{error}</p>
-      <button onClick={initCheckout} style={{
+      <button onClick={() => navigate('/cart')} style={{
         background:'#567245', color:'white', border:'none', borderRadius:10,
         padding:'12px 28px', fontFamily:'Outfit,sans-serif', fontWeight:600,
         fontSize:14, cursor:'pointer'
-      }}>Try Again</button>
+      }}>Back to Cart</button>
     </div>
   );
 
@@ -593,7 +574,7 @@ export default function CheckoutPage() {
                   <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ position:'relative', flexShrink:0 }}>
                       <img
-                        src={item.image || `https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`}
+                        src={getImageUrl(item.image) || `https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`}
                         alt={item.name}
                         style={{ width:44, height:44, borderRadius:10, objectFit:'cover',
                           border:'1px solid #2a3420' }}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { orderAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const STATUS_STYLES = {
     paid_unconfirmed: 'bg-amber-500/10 text-amber-600 border border-amber-500/20',
@@ -207,8 +208,8 @@ export default function AdminOrders() {
                             {viewOrder.items?.map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-4 p-4 bg-black/20 border border-zinc-800 rounded-2xl">
                                     <div className="w-14 h-14 bg-zinc-800 rounded-xl overflow-hidden flex-shrink-0">
-                                        {item.product?.image ? (
-                                            <img src={item.product.image} className="w-full h-full object-cover" alt="" />
+                                        {getImageUrl(item.product?.image) ? (
+                                            <img src={getImageUrl(item.product?.image)} className="w-full h-full object-cover" alt="" />
                                         ) : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
                                     </div>
                                     <div className="flex-grow">

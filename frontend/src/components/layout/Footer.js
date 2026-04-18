@@ -16,7 +16,7 @@ export default function Footer() {
               <div className="w-7 h-7 rounded bg-[#567245] flex items-center justify-center text-white">
                 ⚡
               </div>
-              <span className="font-bold text-[18px] text-white">ZERTEX</span>
+              <span className="font-bold text-[18px] text-white">ZetrexKeys</span>
             </Link>
 
             <p className="text-[#889679] text-[13px]">
@@ -49,7 +49,7 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="border-t border-[#1e2517] mt-6 pt-4 text-center text-[12px] text-[#647454]">
-          © {new Date().getFullYear()} ZERTEX
+          © {new Date().getFullYear()} ZetrexKeys
         </div>
 
       </div>

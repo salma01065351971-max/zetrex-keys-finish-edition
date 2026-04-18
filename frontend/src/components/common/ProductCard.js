@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { authAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const CATEGORY_COLORS = {
   minecraft:    { text: '#5a9e38', bg: 'rgba(90,158,56,0.12)',  border: 'rgba(90,158,56,0.25)'  },
@@ -72,7 +73,7 @@ export default function ProductCard({ product }) {
         style={{ display: 'block', position: 'relative', height: 160, flexShrink: 0, overflow: 'hidden', background: '#0d1f0e' }}
       >
         <img
-          src={product.image || `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(product.name)}`}
+          src={getImageUrl(product.image) || `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(product.name)}`}
           alt={product.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
           onError={e => { e.target.src = `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(product.name?.[0] || '?')}`; }}

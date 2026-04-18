@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { productAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const CATEGORIES = ['roblox', 'minecraft', 'steam', 'discord', 'chatgpt', 'movies', 'gift-cards', 'ebooks', 'games', 'general'];
 
@@ -180,7 +181,7 @@ export default function AdminProducts() {
                 ) : products.map(p => (
                   <tr key={p._id} className="hover:bg-white/[0.01] transition-colors">
                     <td className="px-8 py-5 flex items-center gap-4">
-                      <img src={p.image} className="w-12 h-12 rounded-xl object-cover border border-white/5 bg-zinc-800" alt="" />
+                      <img src={getImageUrl(p.image) || `https://placehold.co/48x48/18181b/22c55e?text=${encodeURIComponent(p.name?.[0] || '?')}`} className="w-12 h-12 rounded-xl object-cover border border-white/5 bg-zinc-800" alt="" />
                       <div>
                         <p className="text-sm font-semibold text-white">{p.name}</p>
                         <p className="text-[11px] text-zinc-500 font-medium">{p.category}</p>

@@ -49,7 +49,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['stripe', 'paymob', 'manual'],
+    enum: ['stripe', 'paypal', 'paymob', 'manual'],
     default: 'stripe'
   },
   paymentIntentId: String,

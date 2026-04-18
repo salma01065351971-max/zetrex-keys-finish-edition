@@ -307,6 +307,10 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    if (!product.isUnlimited && !product.availableStock) {
+      toast.error('Product is out of stock');
+      return;
+    }
     for (let i = 0; i < quantity; i++) addItem(product);
     toast.success(`${quantity}x ${product.name} added to cart`);
   };
@@ -468,7 +472,14 @@ export default function ProductDetail() {
                 <span style={{ width: 40, textAlign: 'center', fontWeight: 'bold' }}>{quantity}</span>
                 <button className="pd-qty-btn" onClick={() => setQuantity(quantity + 1)}>+</button>
               </div>
-              <button onClick={handleAddToCart} className="pd-btn-primary" style={{ flex: 1 }}>Add to Cart</button>
+              <button
+                onClick={handleAddToCart}
+                className="pd-btn-primary"
+                style={{ flex: 1 }}
+                disabled={!product.isUnlimited && !product.availableStock}
+              >
+                {(!product.isUnlimited && !product.availableStock) ? 'Out of Stock' : 'Add to Cart'}
+              </button>
             </div>
 
             <button

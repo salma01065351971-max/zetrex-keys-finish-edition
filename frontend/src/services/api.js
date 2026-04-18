@@ -123,7 +123,7 @@ export const paymentAPI = {
   getConfig: () => API.get('/payments/config'),
   
   // إنشاء نية دفع جديدة (Payment Intent)
-  createPaymentIntent: (items) => API.post('/payments/create-payment-intent', { items }),
+  createPaymentIntent: (data) => API.post('/payments/create-payment-intent', data),
   
   // تأكيد نجاح عملية الدفع
   confirmPayment: (id) => API.post(`/payments/confirm/${id}`),

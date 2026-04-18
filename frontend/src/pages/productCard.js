@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_ORIGIN =
+  process.env.REACT_APP_API_ORIGIN ||
+  process.env.REACT_APP_BACKEND_ORIGIN ||
+  'https://zertexkey-production.up.railway.app';
+
+const getImageUrl = (img) => {
+  if (!img) return '';
+  if (img.startsWith('http') || img.startsWith('blob')) return img;
+  return `${API_ORIGIN}${img}`;
+};
+
 const CATEGORY_COLORS = {
   minecraft:    { color: '#5a9e38', bg: '#5a9e38' },
 
@@ -78,7 +89,7 @@ export default function ProductCard({ product }) {
       }}>
         {image && !imgError ? (
           <img 
-            src={image} 
+            src={getImageUrl(image)} 
             alt={name} 
             onError={() => setImgError(true)}
             style={{

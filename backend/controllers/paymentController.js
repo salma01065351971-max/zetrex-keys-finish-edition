@@ -11,7 +11,7 @@ exports.getConfig = async (req, res) => {
 // ── Create Payment Intent (ينشئ الأوردر مباشرة بـ paid_unconfirmed) ──
 exports.createPaymentIntent = async (req, res, next) => {
   try {
-    const { items } = req.body;
+    const { items, method } = req.body;
 
     if (!items || !items.length) {
       return res.status(400).json({ success: false, message: 'No items provided' });
@@ -82,12 +82,14 @@ exports.createPaymentIntent = async (req, res, next) => {
     }
 
     // Create new order
+    const paymentMethod = method === 'paypal' ? 'paypal' : 'stripe';
+
     const order = await Order.create({
       user: req.user.id,
       items: orderItems,
       totalAmount: finalAmount,
       status: 'paid_unconfirmed',   // was pending
-      paymentMethod: 'manual',
+      paymentMethod,
       checkoutHash
     });
 
@@ -135,6 +137,7 @@ exports.confirmPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Order cannot be processed' });
     }
 
+    order.status = 'completed';
     await order.save();
 
     res.json({

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -339,7 +340,7 @@ export default function CartPage() {
               <div key={item._id} className="cart-glass cart-item-card">
                 <div className="cart-item-main-info">
                   <img
-                    src={item.image || `https://placehold.co/80x80/182512/22c55e?text=${encodeURIComponent(item.name[0])}`}
+                    src={getImageUrl(item.image) || `https://placehold.co/80x80/182512/22c55e?text=${encodeURIComponent(item.name[0])}`}
                     alt={item.name}
                     className="cart-item-img"
                     onError={e => { e.target.src = `https://placehold.co/80x80/182512/22c55e?text=${encodeURIComponent(item.name[0])}`; }}

@@ -5,6 +5,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
+const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 // List of roles that should be redirected to admin dashboard after login
 
@@ -84,7 +85,7 @@ function OTPVerificationForm({ email, otpToken, onSuccess, onBack }) {
     if (pasted.length === 6) handleVerify(pasted);
   };
 
-  
+
   const handleVerify = async (otpValue = null) => {
     const finalOtp = otpValue || otp.join('');
     if (finalOtp.length !== 6) {
@@ -224,8 +225,8 @@ export function AuthPage() {
           </h1>
           <p className="text-[#889679] text-[14px]">
             {activeTab === 'signin'
-              ? 'Sign in to access your ZERTEX account'
-              : 'Join ZERTEX and start gaming today'}
+              ? 'Sign in to access your ZetrexKeys account'
+              : 'Join ZetrexKeys and start gaming today'}
           </p>
         </div>
 
@@ -371,7 +372,8 @@ function SignInForm() {
           required
           value={form.email}
           onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-          placeholder="zertex@example.com"
+          placeholder="
+          ZetrexKeys@example.com"
           className="w-full px-4 py-3 rounded-[10px] bg-[#10140c] border border-[#232c1b] text-[#f5f5f5] placeholder:text-[#4d5943] focus:border-[#516441] focus:outline-none focus:ring-1 focus:ring-[#516441] transition-all text-[14px]"
         />
       </div>
@@ -431,14 +433,24 @@ function SignInForm() {
 
       {/* Google Button */}
       <div className="w-full flex justify-center h-12 overflow-hidden rounded-[10px] items-center">
-        <GoogleLogin
-          onSuccess={handleGoogleSuccess}
-          onError={() => toast.error('Google Login was cancelled or failed')}
-          size="large"
-          theme="filled_black"
-          shape="rectangular"
-          text="continue_with"
-        />
+        {googleClientId ? (
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => toast.error('Google Login was cancelled or failed')}
+            size="large"
+            theme="filled_black"
+            shape="rectangular"
+            text="continue_with"
+          />
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="w-full bg-[#10140c] border border-[#232c1b] text-[#6e7d5e] font-semibold py-3 rounded-[10px] text-[14px] cursor-not-allowed"
+          >
+            Google Sign-In unavailable
+          </button>
+        )}
       </div>
     </form>
   );
@@ -535,7 +547,7 @@ function RegisterForm() {
           required
           value={form.name}
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-          placeholder="Zertex"
+          placeholder="ZetrexKeys"
           className="w-full px-4 py-3 rounded-[10px] bg-[#10140c] border border-[#232c1b] text-[#f5f5f5] placeholder:text-[#4d5943] focus:border-[#516441] focus:outline-none focus:ring-1 focus:ring-[#516441] transition-all text-[14px]"
         />
       </div>
@@ -631,14 +643,24 @@ function RegisterForm() {
 
       {/* Google Button */}
       <div className="w-full flex justify-center h-12 overflow-hidden rounded-[10px] items-center">
-        <GoogleLogin
-          onSuccess={handleGoogleSuccess}
-          onError={() => toast.error('Google Login was cancelled or failed')}
-          size="large"
-          theme="filled_black"
-          shape="rectangular"
-          text="continue_with"
-        />
+        {googleClientId ? (
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => toast.error('Google Login was cancelled or failed')}
+            size="large"
+            theme="filled_black"
+            shape="rectangular"
+            text="continue_with"
+          />
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="w-full bg-[#10140c] border border-[#232c1b] text-[#6e7d5e] font-semibold py-3 rounded-[10px] text-[14px] cursor-not-allowed"
+          >
+            Google Sign-In unavailable
+          </button>
+        )}
       </div>
     </form>
   );
