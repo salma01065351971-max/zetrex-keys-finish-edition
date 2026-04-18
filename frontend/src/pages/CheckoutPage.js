@@ -52,11 +52,38 @@ const STYLES = `
     align-items: center;
     gap: 14px;
   }
-  .method-card:hover { border-color: #567245; background: #1a2014; }
+  .method-card:hover:not(.method-card-disabled) { border-color: #567245; background: #1a2014; }
   .method-card.selected {
     border-color: #567245;
     background: rgba(86,114,69,0.08);
     box-shadow: 0 0 0 1px #567245;
+  }
+  .method-card-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+    overflow: hidden;
+    filter: grayscale(0.3);
+  }
+  .method-card-disabled:hover {
+    border-color: #2a3420;
+    background: #161b11;
+  }
+  .coming-soon-badge {
+    position: absolute;
+    top: 14px;
+    right: -32px;
+    background: linear-gradient(135deg, #635bff, #7c6fff);
+    color: white;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 4px 40px;
+    transform: rotate(32deg);
+    letter-spacing: .1em;
+    font-family: 'Rajdhani', sans-serif;
+    z-index: 2;
+    box-shadow: 0 2px 12px rgba(99,91,255,0.35);
+    text-transform: uppercase;
   }
   .method-radio {
     width: 18px; height: 18px;
@@ -331,7 +358,7 @@ export default function CheckoutPage() {
   const { items, total, clearCart, isEmpty } = useCart();
   const navigate = useNavigate();
 
-  const [method, setMethod] = useState('stripe');
+  const [method, setMethod] = useState('paypal');
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   const [error, setError] = useState('');
@@ -455,9 +482,11 @@ export default function CheckoutPage() {
 
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 <div
-                  className={`method-card ${method === 'stripe' ? 'selected' : ''}`}
-                  onClick={() => setMethod('stripe')}
+                  className="method-card method-card-disabled"
+                  onClick={(e) => { e.preventDefault(); }}
+                  title="Coming Soon"
                 >
+                  <div className="coming-soon-badge">COMING SOON</div>
                   <div className="method-radio">
                     <div className="method-radio-dot" />
                   </div>
@@ -527,24 +556,15 @@ export default function CheckoutPage() {
                 <div className="step-badge">2</div>
                 <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18,
                   fontWeight:700, color:'#e8f0e0', margin:0 }}>
-                  {method === 'stripe' ? 'Card Details' : 'PayPal Checkout'}
+                  PayPal Checkout
                 </h2>
               </div>
 
-              {method === 'stripe' && (
-                <StripeForm
-                  onSubmit={handleStripeSubmit}
-                  loading={loading || isSubmitting}
-                  total={total}
-                />
-              )}
-              {method === 'paypal' && (
-                <PayPalForm
-                  onSubmit={handlePayPalSubmit}
-                  loading={loading || isSubmitting}
-                  total={total}
-                />
-              )}
+              <PayPalForm
+                onSubmit={handlePayPalSubmit}
+                loading={loading || isSubmitting}
+                total={total}
+              />
             </div>
 
             {/* Security Badges */}

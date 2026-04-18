@@ -63,7 +63,7 @@ const MaintenanceGuard = ({ children }) => {
           <p className="text-gray-500 font-normal text-sm mb-12 max-w-[280px] leading-relaxed">
             {lang === 'en' 
               ? 'Optimizing the vault for your next level' 
-              : 'نقوم بتطوير النظام لضمان تجربة أسطورية لك'}
+              : 'نقوم بتطوير النظام '}
           </p>
 
           {/* شريط التحميل */}
