@@ -262,7 +262,7 @@ exports.updateOrderStatus = async (req, res, next) => {
 // ✅ ده اللي الأدمن هيستخدمه
 exports.confirmAndSend = async (req, res, next) => {
   try {
-    const { deliveryMode = 'database', deliveredCode } = req.body;
+    const { deliveryMode = 'database', deliveredCode, manualCodesPerItem } = req.body;
 
     let order = await Order.findById(req.params.id)
       .populate('items.product', 'name image category platform')
@@ -307,11 +307,16 @@ exports.confirmAndSend = async (req, res, next) => {
         });
       }
 
-      // Manual delivery - create a DigitalCode instance to satisfy the ObjectId references and track the code
-      if (!deliveredCode || !deliveredCode.trim()) {
+      // Manual delivery - كود مختلف لكل item
+      const codesArray = Array.isArray(manualCodesPerItem) && manualCodesPerItem.length > 0
+        ? manualCodesPerItem
+        : order.items.map(() => deliveredCode); // fallback للكود القديم
+
+      const missingCode = codesArray.some(c => !c || !String(c).trim());
+      if (missingCode) {
         return res.status(400).json({
           success: false,
-          message: 'Code is required for manual delivery'
+          message: 'Code is required for every item in manual delivery'
         });
       }
 
@@ -319,11 +324,14 @@ exports.confirmAndSend = async (req, res, next) => {
       session.startTransaction();
 
       try {
-        for (const item of order.items) {
+        for (let i = 0; i < order.items.length; i++) {
+          const item = order.items[i];
+          const itemCode = String(codesArray[i] || codesArray[0]).trim();
+
           // Create the DigitalCode for this manual entry
           const newCode = new DigitalCode({
             product: item.product._id || item.product,
-            code: deliveredCode,
+            code: itemCode,
             isUsed: true,
             usedBy: order.user._id || order.user,
             usedAt: new Date(),
