@@ -151,34 +151,15 @@ export default function ProductDetail() {
   };
 
 const handleAddToCart = async () => {
-    if (!product) return;
-    
-    if (!product.isUnlimited && !product.availableStock) {
-      toast.error('Product is out of stock', { id: 'cart-status' });
-      return;
-    }
+  if (!product) return;
 
-    const success = await addItem(product, quantity);
-    
-    if (success) {
-      // استخدام id: 'cart-success' يضمن تحديث التوست نفسه بدلاً من تكراره
-      toast.success(
-        `${quantity > 1 ? quantity + 'x ' : ''}${product.name} added to cart`, 
-        { 
-          id: 'cart-success', // هذا الـ ID يمنع الازدحام
-          duration: 2000,
-          icon: '🛒',
-          style: {
-            background: '#1a1a1a',
-            color: '#fff',
-            border: '1px solid #22c55e',
-            fontSize: '14px',
-            fontFamily: 'Outfit, sans-serif'
-          }
-        }
-      );
-    }
-  };
+  if (!product.isUnlimited && !product.availableStock) {
+    toast.error('Product is out of stock', { id: 'cart-status' });
+    return;
+  }
+
+  await addItem(product, quantity);
+};
 
   const handleToggleWishlist = async () => {
     if (!isAuthenticated) return toast.error('Please log in to use wishlist');

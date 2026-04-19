@@ -296,6 +296,23 @@ export default function CartPage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toasts, show: showToast } = useToast();
+  const [quantities, setQuantities] = React.useState({});
+
+  // sync local quantities when items change from server
+  React.useEffect(() => {
+    setQuantities({});
+  }, [items.length]);
+
+  const getQty = (item) => quantities[item._id] ?? item.quantity;
+
+const handleUpdateQty = (item, newQty) => {
+  if (newQty < 1) {
+    handleRemoveItem(item);
+    return;
+  }
+  setQuantities(prev => ({ ...prev, [item._id]: newQty }));
+  updateQuantity(getProductId(item), newQty); // ← getProductId مش item._id
+};
 
   const handleCheckout = () => {
     if (!isAuthenticated) return navigate('/login?redirect=/checkout');
@@ -375,18 +392,18 @@ export default function CartPage() {
                   <div className="cart-qty-box">
                     <button
                       className="cart-qty-btn"
-                      onClick={() => item.quantity > 1 ? updateQuantity(getProductId(item), item.quantity - 1) : handleRemoveItem(item)}
+                      onClick={() => handleUpdateQty(item, getQty(item) - 1)}
                     >−</button>
                     <span style={{ width: 32, textAlign: 'center', color: '#e8f0e0', fontSize: 14, fontWeight: 700 }}>
-                      {item.quantity}
+                      {getQty(item)}
                     </span>
                     <button
                       className="cart-qty-btn"
-                      onClick={() => updateQuantity(getProductId(item), item.quantity + 1)}
+                      onClick={() => handleUpdateQty(item, getQty(item) + 1)}
                     >+</button>
                   </div>
 
-                  <p className="cart-subtotal">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="cart-subtotal">${(item.price * getQty(item)).toFixed(2)}</p>
 
                   <button
                     className="cart-basket-btn"
