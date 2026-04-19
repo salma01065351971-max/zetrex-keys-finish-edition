@@ -205,7 +205,7 @@ exports.updateOrderStatus = async (req, res, next) => {
       if (order.status === 'completed') {
         return res.json({ success: true, order });
       }
-      if (order.status === 'completed') {
+      if (['cancelled', 'refunded'].includes(order.status)) {
         return res.status(400).json({
           success: false,
           message: 'Order not ready for completion'
@@ -276,29 +276,37 @@ exports.confirmAndSend = async (req, res, next) => {
       });
     }
 
-    if (order.status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Order already confirmed'
-      });
-    }
-
-    if (order.status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Order not ready for confirmation'
+    const hasCodesAlready = Array.isArray(order.items) && order.items.every(item => (item.codes || []).length > 0);
+    if (order.status === 'completed' && hasCodesAlready) {
+      return res.json({
+        success: true,
+        message: 'Order already confirmed',
+        order
       });
     }
 
     // ✅ اعمل Fulfillment الأول إذا كان delivery mode database
     if (deliveryMode === 'database') {
-      order = await exports.fulfillOrder(order._id);
-      // ✅ Repopulate عشان user._id يكون متاح للـ notification والـ email
-      order = await Order.findById(order._id)
-        .populate('user', 'name email')
-        .populate('items.product', 'name image')
-        .populate('items.codes', 'code');
+      if (hasCodesAlready) {
+        order.status = 'completed';
+        await order.save();
+      } else {
+        order = await exports.fulfillOrder(order._id);
+        // ✅ Repopulate عشان user._id يكون متاح للـ notification والـ email
+        order = await Order.findById(order._id)
+          .populate('user', 'name email')
+          .populate('items.product', 'name image')
+          .populate('items.codes', 'code');
+      }
     } else if (deliveryMode === 'manual') {
+      if (hasCodesAlready) {
+        return res.json({
+          success: true,
+          message: 'Order already delivered manually',
+          order
+        });
+      }
+
       // Manual delivery - create a DigitalCode instance to satisfy the ObjectId references and track the code
       if (!deliveredCode || !deliveredCode.trim()) {
         return res.status(400).json({
