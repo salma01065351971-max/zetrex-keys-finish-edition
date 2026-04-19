@@ -263,6 +263,8 @@ exports.updateOrderStatus = async (req, res, next) => {
 exports.confirmAndSend = async (req, res, next) => {
   try {
     const { deliveryMode = 'database', deliveredCode, manualCodesPerItem } = req.body;
+    console.log('>>> manualCodesPerItem:', manualCodesPerItem);
+console.log('>>> deliveredCode:', deliveredCode);
 
     let order = await Order.findById(req.params.id)
       .populate('items.product', 'name image category platform')
