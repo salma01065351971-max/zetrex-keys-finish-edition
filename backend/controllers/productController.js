@@ -67,6 +67,12 @@ exports.getProducts = async (req, res, next) => {
       .limit(Number(limit))
       .select('-reviews');
 
+    // تم حذف .select('-reviews') لكي تظهر التعليقات في الداشبورد
+    const products = await Product.find(query)
+      .sort(sortBy)
+      .skip(skip)
+      .limit(Number(limit));
+
     res.json({
       success: true,
       total,
@@ -208,7 +214,6 @@ exports.addReview = async (req, res, next) => {
     const productId = req.params.id;
     const { rating, comment } = req.body;
 
-    // التحقق من شراء المستخدم للمنتج (يجب أن يكون الأوردر مكتمل)
     const hasPurchased = await Order.findOne({
       user: req.user.id,
       status: 'completed',
@@ -218,13 +223,12 @@ exports.addReview = async (req, res, next) => {
     if (!hasPurchased) {
       return res.status(403).json({
         success: false,
-        message: 'You can only review products you have purchased and completed the order for.'
+        message: 'You can only review products you have purchased.'
       });
     }
 
     const product = await Product.findById(productId);
     
-    // منع التكرار
     if (product.reviews.find(r => r.user.toString() === req.user.id)) {
       return res.status(400).json({ success: false, message: 'You have already reviewed this product.' });
     }
@@ -239,11 +243,21 @@ exports.addReview = async (req, res, next) => {
     product.updateRating();
     await product.save();
 
-    res.status(201).json({ success: true, message: 'Your review has been added successfully' });
+    // إرسال إشعار للأدمن
+    await Notification.create({
+      user: product.createdBy, // صاحب المنتج
+      type: 'general',
+      title: 'New Review Received',
+      message: `User ${req.user.name} reviewed ${product.name}`,
+      metadata: { productId: product._id },
+      actionUrl: '/admin/products'
+    });
+
+    res.status(201).json({ success: true, message: 'Review added' });
   } catch (err) { next(err); }
 };
-
 // حذف تقييم - متاح للأدوار الإدارية
+
 exports.deleteReview = async (req, res, next) => {
   try {
     const { productId, reviewId } = req.params;

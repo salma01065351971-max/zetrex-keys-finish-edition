@@ -14,13 +14,15 @@ const EMPTY_FORM = {
   region: 'Global', 
   price: '', 
   originalPrice: '', 
+  stock: 0,
   image: null, 
   tags: '', 
   isFeatured: false, 
   isUnlimited: false, 
   isActive: true,
   extraInfo: '', 
-  youtubeUrl: '' 
+  youtubeUrl: '',
+  reviews: []
 };
 
 export default function AdminProducts() {
@@ -33,36 +35,39 @@ export default function AdminProducts() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('live'); 
   
-  // حالات الـ Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // إعادة تحميل المنتجات عند تغيير الصفحة أو التبويب
   useEffect(() => { 
     loadProducts(); 
   }, [page, activeTab]);
 
- const loadProducts = async () => {
-  setLoading(true);
-  try {
-    const res = await productAPI.getAll({ 
-      page, 
-      limit: 10, 
-      isAdmin: true,
-      activeTab: activeTab // نرسل التبويب المختار للباك-أند (live أو hidden)
-    });
-    
-    if (res.data && res.data.products) {
-      setProducts(res.data.products);
-      setTotalPages(res.data.pages || 1);
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const res = await productAPI.getAll({ 
+        page, 
+        limit: 10, 
+        isAdmin: true,
+        activeTab: activeTab 
+      });
+      
+      if (res.data && res.data.products) {
+        setProducts(res.data.products);
+        setTotalPages(res.data.pages || 1);
+      }
+    } catch (err) { 
+      toast.error('Failed to load products'); 
+    } finally { 
+      setLoading(false); 
     }
-  } catch (err) { 
-    toast.error('Failed to load products'); 
-  } finally { 
-    setLoading(false); 
-  }
-};
-  const openCreate = () => { setForm(EMPTY_FORM); setEditing(null); setModal(true); };
+  };
+
+  const openCreate = () => { 
+    setForm(EMPTY_FORM); 
+    setEditing(null); 
+    setModal(true); 
+  };
   
   const openEdit = (p) => {
     setForm({ 
@@ -70,10 +75,30 @@ export default function AdminProducts() {
       tags: p.tags?.join(', ') || '', 
       price: p.price.toString(), 
       originalPrice: (p.originalPrice || '').toString(),
-      image: null 
+      stock: p.stock || 0,
+      image: null,
+      reviews: p.reviews || [] // ضمان تحميل التعليقات في الفورم
     });
     setEditing(p._id);
     setModal(true);
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      await productAPI.deleteReview(editing, reviewId);
+      toast.success('Comment deleted');
+      
+      setForm(f => ({
+        ...f,
+        reviews: f.reviews.filter(r => r._id !== reviewId)
+      }));
+      
+      loadProducts(); 
+    } catch (err) {
+      toast.error('Failed to delete comment');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -83,10 +108,14 @@ export default function AdminProducts() {
       const formData = new FormData();
       Object.keys(form).forEach(key => {
         if (key === 'tags') {
-          const tagsArray = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+          const tagsArray = form.tags && typeof form.tags === 'string' 
+            ? form.tags.split(',').map(t => t.trim()).filter(Boolean) 
+            : [];
           formData.append('tags', JSON.stringify(tagsArray));
         } else if (key === 'image') {
           if (form.image) formData.append('image', form.image);
+        } else if (key === 'reviews') {
+          return; // لا نرسل التعليقات في FormData
         } else {
           formData.append(key, form[key]);
         }
@@ -119,9 +148,7 @@ export default function AdminProducts() {
   };
 
   const filtered = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const isVisible = activeTab === 'live' ? p.isActive : !p.isActive;
-    return matchesSearch && isVisible;
+    return p.name.toLowerCase().includes(search.toLowerCase());
   });
 
   return (
@@ -178,7 +205,7 @@ export default function AdminProducts() {
                   <tr><td colSpan="4" className="px-8 py-20 text-center text-zinc-600">Loading inventory...</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan="4" className="px-8 py-20 text-center text-zinc-600 font-medium text-sm">No products found in this list.</td></tr>
-                ) : products.map(p => (
+                ) : filtered.map(p => (
                   <tr key={p._id} className="hover:bg-white/[0.01] transition-colors">
                     <td className="px-8 py-5 flex items-center gap-4">
                       <img src={getImageUrl(p.image) || `https://placehold.co/48x48/18181b/22c55e?text=${encodeURIComponent(p.name?.[0] || '?')}`} className="w-12 h-12 rounded-xl object-cover border border-white/5 bg-zinc-800" alt="" />
@@ -217,7 +244,6 @@ export default function AdminProducts() {
             </table>
           </div>
 
-          {/* Minimalist Pagination UI */}
           <div className="flex justify-between items-center px-8 py-5 border-t border-white/5 bg-white/[0.01]">
             <p className="text-xs text-zinc-600 font-normal ">
               Page {page} of {totalPages}
@@ -244,7 +270,7 @@ export default function AdminProducts() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-4xl bg-[#0c0c0c] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+          <div className="relative w-full max-w-4xl bg-[#0c0c0c] border border-white/5 rounded-[2.5rem] shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="p-10">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold text-white">{editing ? 'Update Product' : 'New Product'}</h2>
@@ -252,6 +278,7 @@ export default function AdminProducts() {
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">
+                
                 <div className="flex items-center justify-between p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl mb-8">
                   <div>
                     <p className="text-sm font-bold text-emerald-400 font-sans">Unlimited / Manual Inventory</p>
@@ -295,6 +322,13 @@ export default function AdminProducts() {
                     <input type="number" step="0.01" value={form.originalPrice} onChange={e => setForm(f=>({...f, originalPrice: e.target.value}))} className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3.5 outline-none focus:border-white transition-all text-white" />
                   </div>
 
+                  {!form.isUnlimited && (
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-semibold text-zinc-500 mb-2 block tracking-wide">Stock Count *</label>
+                      <input type="number" value={form.stock} onChange={e => setForm(f=>({...f, stock: e.target.value}))} className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3.5 outline-none focus:border-white transition-all text-white" />
+                    </div>
+                  )}
+
                   <div className="sm:col-span-2">
                     <label className="text-xs font-semibold text-zinc-500 mb-2 block tracking-wide">YouTube URL</label>
                     <input value={form.youtubeUrl} onChange={e => setForm(f=>({...f, youtubeUrl: e.target.value}))} className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3.5 outline-none focus:border-white transition-all text-white" placeholder="https://youtube.com/watch?v=..." />
@@ -320,7 +354,40 @@ export default function AdminProducts() {
                     <label htmlFor="isFeatured" className="text-xs font-semibold text-zinc-400 cursor-pointer font-sans">Mark as Featured</label>
                   </div>
                 </div>
-                
+
+                {/* 🔴 قسم التعليقات - يظهر الآن داخل نفس المودال وبشكل صحيح عند التعديل */}
+                {editing && form.reviews && form.reviews.length > 0 && (
+                  <div className="mt-12 pt-8 border-t border-white/5">
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                      Customer Reviews 
+                      <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-xs rounded-full">{form.reviews.length}</span>
+                    </h3>
+                    
+                    <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                      {form.reviews.map((rev) => (
+                        <div key={rev._id} className="p-4 bg-zinc-900/50 border border-white/5 rounded-2xl flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold text-emerald-500">★ {rev.rating}</span>
+                              <span className="text-[10px] text-zinc-500">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-sm text-zinc-300 leading-relaxed">{rev.comment}</p>
+                            <p className="text-[10px] text-zinc-600 mt-2 font-mono">User ID: {rev.user}</p>
+                          </div>
+                          
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteReview(rev._id)}
+                            className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all text-xs font-bold"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4 pt-8 border-t border-white/5">
                   <button type="submit" disabled={saving} className="flex-1 bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition-all disabled:opacity-50">
                     {saving ? 'Processing...' : editing ? 'Update Asset' : 'Create Asset'}
@@ -332,6 +399,7 @@ export default function AdminProducts() {
           </div>
         </div>
       )}
+      
     </div>
   );
 }

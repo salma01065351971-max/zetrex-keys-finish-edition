@@ -11,17 +11,19 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const ref = useRef(null);
 
-  // جلب الإشعارات كل 30 ثانية — بس لو المستخدم logged in
+  // جلب الإشعارات كل 30 ثانية — فقط إذا كان المستخدم مسجلاً دخوله
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, [isAuthenticated]); // ✅ بيشتغل بس لما isAuthenticated يتغير لـ true
+  }, [isAuthenticated]);
 
-  // إغلاق الـ dropdown لو ضغط برا
+  // إغلاق القائمة المنسدلة عند الضغط خارجها
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => { 
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false); 
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -31,7 +33,9 @@ export default function NotificationBell() {
       const res = await notificationAPI.getNotifications();
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
-    } catch {}
+    } catch (err) {
+      console.error("Error fetching notifications", err);
+    }
   };
 
   const handleOpen = async () => {
@@ -41,7 +45,9 @@ export default function NotificationBell() {
         await notificationAPI.markAllAsRead();
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      } catch {}
+      } catch (err) {
+        console.error("Error marking as read", err);
+      }
     }
   };
 
@@ -51,7 +57,9 @@ export default function NotificationBell() {
     try {
       await notificationAPI.deleteNotification(id);
       setNotifications(prev => prev.filter(n => n._id !== id));
-    } catch {}
+    } catch (err) {
+      console.error("Error deleting notification", err);
+    }
   };
 
   const handleClearAll = async () => {
@@ -59,7 +67,9 @@ export default function NotificationBell() {
       await notificationAPI.clearAll();
       setNotifications([]);
       setUnreadCount(0);
-    } catch {}
+    } catch (err) {
+      console.error("Error clearing notifications", err);
+    }
   };
 
   const timeAgo = (date) => {
@@ -74,6 +84,7 @@ export default function NotificationBell() {
     codes_ready: '🎉',
     order_failed: '❌',
     order_refunded: '💸',
+    NEW_COMMENT: '💬', // إضافة أيقونة للتعليقات الجديدة
     general: '🔔',
   };
 
@@ -126,7 +137,12 @@ export default function NotificationBell() {
               </div>
             ) : notifications.map(n => (
               <Link
-                key={n._id} to={n.actionUrl || '/orders'} onClick={() => setOpen(false)}
+                key={n._id} 
+                // التوجيه: إذا كان تعليق يذهب لصفحة المنتجات، وإلا للرابط المخزن أو صفحة الطلبات
+                to={n.type === 'NEW_COMMENT' ? '/admin/products' : (n.actionUrl || '/orders')} 
+                // تمرير المعرف في الـ State ليتم التقاطه في صفحة المنتجات
+                state={n.type === 'NEW_COMMENT' ? { openProduct: n.metadata?.productId } : {}}
+                onClick={() => setOpen(false)}
                 style={{
                   display: 'flex', gap: 12, padding: '14px 20px',
                   borderBottom: '1px solid rgba(255,255,255,0.04)',
@@ -140,9 +156,20 @@ export default function NotificationBell() {
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.4 }}>{n.message}</p>
                   <p style={{ margin: '5px 0 0', fontSize: 10, color: '#374151', fontWeight: 600 }}>{timeAgo(n.createdAt)}</p>
                 </div>
-                <button onClick={(e) => handleDelete(e, n._id)} style={{ position: 'absolute', top: 10, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#374151', fontSize: 16, lineHeight: 1 }}>×</button>
+                <button 
+                  onClick={(e) => handleDelete(e, n._id)} 
+                  style={{ 
+                    position: 'absolute', top: 10, right: 12, background: 'none', 
+                    border: 'none', cursor: 'pointer', color: '#374151', fontSize: 16, lineHeight: 1 
+                  }}
+                >
+                  ×
+                </button>
                 {!n.isRead && (
-                  <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+                  <div style={{ 
+                    position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', 
+                    width: 6, height: 6, borderRadius: '50%', background: '#22c55e' 
+                  }} />
                 )}
               </Link>
             ))}
