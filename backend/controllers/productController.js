@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const DigitalCode = require('../models/DigitalCode');
+const Order = require('../models/Order');
 
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res, next) => {
@@ -201,28 +202,36 @@ exports.deleteProduct = async (req, res, next) => {
 };
 
 // ADD REVIEW
+// إضافة تقييم - للمشترين فقط
 exports.addReview = async (req, res, next) => {
   try {
+    const productId = req.params.id;
     const { rating, comment } = req.body;
 
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    // التحقق من شراء المستخدم للمنتج (يجب أن يكون الأوردر مكتمل)
+    const hasPurchased = await Order.findOne({
+      user: req.user.id,
+      status: 'completed',
+      'items.product': productId
+    });
+
+    if (!hasPurchased) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only review products you have purchased and completed the order for.'
+      });
     }
 
-    const alreadyReviewed = product.reviews.find(
-      r => r.user.toString() === req.user.id
-    );
-
-    if (alreadyReviewed) {
-      return res.status(400).json({
-        success: false,
-        message: 'You already reviewed this product'
-      });
+    const product = await Product.findById(productId);
+    
+    // منع التكرار
+    if (product.reviews.find(r => r.user.toString() === req.user.id)) {
+      return res.status(400).json({ success: false, message: 'You have already reviewed this product.' });
     }
 
     product.reviews.push({
       user: req.user.id,
+      name: req.user.name,
       rating: Number(rating),
       comment
     });
@@ -230,10 +239,24 @@ exports.addReview = async (req, res, next) => {
     product.updateRating();
     await product.save();
 
-    res.status(201).json({ success: true, message: 'Review added' });
-  } catch (err) {
-    next(err);
-  }
+    res.status(201).json({ success: true, message: 'Your review has been added successfully' });
+  } catch (err) { next(err); }
+};
+
+// حذف تقييم - متاح للأدوار الإدارية
+exports.deleteReview = async (req, res, next) => {
+  try {
+    const { productId, reviewId } = req.params;
+    const product = await Product.findById(productId);
+    
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    product.reviews = product.reviews.filter(r => r._id.toString() !== reviewId);
+    product.updateRating();
+    await product.save();
+
+    res.json({ success: true, message: 'Review deleted successfully' });
+  } catch (err) { next(err); }
 };
 
 // CATEGORY STATS

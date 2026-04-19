@@ -88,8 +88,12 @@ export const productAPI = {
   // حذف منتج
   delete: (id) => API.delete(`/products/${id}`),
   
-  // إضافة تقييم لمنتج
+  // إضافة تقييم لمنتج (متاحة للمشترين فقط - التحقق يتم في السيرفر)
   addReview: (id, data) => API.post(`/products/${id}/reviews`, data),
+
+  // حذف تقييم منتج (متاحة لـ: owner, hidden, admin, manager, editor)
+  deleteReview: (productId, reviewId) => 
+    API.delete(`/products/${productId}/reviews/${reviewId}`),
   
   // جلب إحصائيات الفئات
   getCategoryStats: () => API.get('/products/categories/stats'),
@@ -218,5 +222,6 @@ export const notificationAPI = {
   // حذف جميع الإشعارات
   clearAll: () => API.delete('/notifications/clear-all'),
 };
+
 
 export default API;

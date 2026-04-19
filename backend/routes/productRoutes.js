@@ -8,6 +8,17 @@ router.get('/', ctrl.getProducts);
 router.get('/categories/stats', ctrl.getCategoryStats);
 router.get('/:id', ctrl.getProduct);
 
+// تقييم المنتج - متاح للمستخدمين الذين اشتروا المنتج فقط
+router.post('/:id/reviews', protect, ctrl.addReview);
+
+// حذف تقييم (لكل من لديه صلاحية إدارية)
+router.delete(
+  '/:productId/reviews/:reviewId',
+  protect,
+  authorize('owner', 'hidden', 'admin', 'manager', 'editor'),
+  ctrl.deleteReview
+);
+
 // إنشاء منتج جديد مع صورة
 router.post('/', protect, authorize('editor'), upload.single('image'), ctrl.createProduct);
 
