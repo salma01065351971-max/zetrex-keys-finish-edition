@@ -3,6 +3,7 @@ const Product     = require('../models/Product');
 const DigitalCode = require('../models/DigitalCode');
 const crypto      = require('crypto');
 const emailService = require('../services/emailService');
+const Notification = require('../models/Notification'); // استدعاء موديل الإشعارات
 
 exports.getConfig = async (req, res) => {
   res.json({ success: true, publishableKey: 'fake_key', fakeMode: true });
@@ -123,22 +124,29 @@ exports.confirmPayment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // لو الأوردر خلاص في الحالة الصحيحة
-    if (order.status === 'paid_unconfirmed' || order.status === 'completed') {
-      return res.json({
-        success: true,
-        order,
-        alreadyProcessed: true
-      });
+    // لو الأوردر خلاص مكتمل، مش هنعمل حاجة
+    if (order.status === 'completed') {
+       return res.json({ success: true, order, alreadyProcessed: true });
     }
 
-    // لو كان في حالة تانية (مثل failed)
-    if (order.status !== 'paid_unconfirmed') {
-      return res.status(400).json({ success: false, message: 'Order cannot be processed' });
-    }
-
+    // تحديث حالة الأوردر
     order.status = 'completed';
     await order.save();
+
+    // ✨ الجزء الجديد: إنشاء إشعار لليوزر
+    try {
+      await Notification.create({
+        user: req.user.id,
+        type: 'codes_ready', // النوع اللي إنت معرفه في الـ Schema
+        title: 'Order Confirmed! 🎉',
+        message: `Your order #${order._id.toString().slice(-6)} has been completed successfully. Check your items now!`,
+        actionUrl: `/orders/${order._id}`, // لينك يودي اليوزر لصفحة الأوردر
+        metadata: { orderId: order._id }
+      });
+    } catch (err) {
+      console.error('❌ Failed to create notification:', err);
+      // مش هنعمل throw عشان عملية الدفع نفسها متوقفش لو الإشعار فشل
+    }
 
     res.json({
       success: true,

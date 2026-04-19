@@ -42,13 +42,6 @@ app.use(cors({
 app.use(helmet());
 app.use(mongoSanitize());
 
-// ─── Rate Limiting ─────────────────────────────────────────────────────────────
-//const limiter = rateLimit({
- // windowMs: 15 * 60 * 1000, // 15 minutes
- // max: 200,
- // message: { success: false, message: 'Too many requests, please try again later.' }
-//});
-//app.use('/api/', limiter);
 
 // Stripe webhook needs raw body
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
@@ -69,6 +62,8 @@ app.use('/api/codes',    require('./routes/codeRoutes'));
 app.use('/api/cart',     require('./routes/cartRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+
 
 
 

@@ -4,6 +4,7 @@ const DigitalCode = require('../models/DigitalCode');
 const User = require('../models/User');
 const Log = require('../models/Log');
 const emailService = require('../services/emailService');
+const NotificationService = require('../controllers/notificationController');
 
 // Helper: create an admin log entry (silent fail)
 const createLog = async (admin, action, target, details = '') => {
@@ -292,6 +293,11 @@ exports.confirmAndSend = async (req, res, next) => {
     // ✅ اعمل Fulfillment الأول إذا كان delivery mode database
     if (deliveryMode === 'database') {
       order = await exports.fulfillOrder(order._id);
+      // ✅ Repopulate عشان user._id يكون متاح للـ notification والـ email
+      order = await Order.findById(order._id)
+        .populate('user', 'name email')
+        .populate('items.product', 'name image')
+        .populate('items.codes', 'code');
     } else if (deliveryMode === 'manual') {
       // Manual delivery - create a DigitalCode instance to satisfy the ObjectId references and track the code
       if (!deliveredCode || !deliveredCode.trim()) {
@@ -353,6 +359,20 @@ exports.confirmAndSend = async (req, res, next) => {
     emailService
       .sendOrderConfirmation(order.user, order)
       .catch(console.error);
+
+    // ✅ ابعت إشعار للعميل
+    try {
+      const codesCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      await NotificationService.createNotification(order.user._id, {
+        type: 'codes_ready',
+        title: '🎉 Your Codes Are Ready!',
+        message: `Order #${order.orderNumber} confirmed. ${codesCount} code(s) available now.`,
+        metadata: { orderId: order._id, orderNumber: order.orderNumber, codesCount, amount: order.totalAmount },
+        actionUrl: `/orders/${order._id}`
+      });
+    } catch (notifErr) {
+      console.error('Notification failed:', notifErr.message);
+    }
 
     // ✅ سجّل العملية في الـ Logs
     await createLog(
