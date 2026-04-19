@@ -50,7 +50,8 @@ export default function AdminDashboard() {
     { to: '/admin/codes', label: 'Key Matrix', icon: '🔑' },
     { to: '/admin/orders', label: 'Sales Log', icon: '🛒' },
     { to: '/admin/users', label: 'Directory', icon: '👥' },
-{ to: '/admin/financials', label: 'Ledger', icon: '💰' },
+    { to: '/admin/financials', label: 'Ledger', icon: '💰' },
+    { to: '/admin/discounts', label: 'Discounts', icon: '🏷️' },
     { to: '/admin/settings', label: 'System Settings', icon: '⚙️' },
   ];
 

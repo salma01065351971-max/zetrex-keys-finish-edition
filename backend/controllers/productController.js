@@ -11,21 +11,18 @@ exports.getProducts = async (req, res, next) => {
       category, platform, region, minPrice, maxPrice,
       search, sort, page = 1, limit = 12, featured,
       isAdmin,
-      activeTab // استلام التبويب من الطلب (live أو hidden)
+      activeTab 
     } = req.query;
 
     let query = {};
 
-    // منطق الفلترة المتقدم للأدمن
     if (isAdmin === 'true') {
       if (activeTab === 'live') {
         query.isActive = true;
       } else if (activeTab === 'hidden') {
         query.isActive = false;
       }
-      // إذا لم يرسل activeTab، سيجلب كل شيء (اختياري)
     } else {
-      // للمستخدم العادي، يرى النشط فقط دائماً
       query.isActive = true;
     }
 
@@ -62,7 +59,6 @@ exports.getProducts = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
     
     const total = await Product.countDocuments(query);
-
     const products = await Product.find(query)
       .sort(sortBy)
       .skip(skip)
@@ -86,7 +82,6 @@ exports.getProduct = async (req, res, next) => {
   try {
     const { isAdmin } = req.query;
 
-    // بناء الكويري للبحث عن المنتج
     const findQuery = {
       $or: [
         { _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null },
@@ -94,7 +89,6 @@ exports.getProduct = async (req, res, next) => {
       ]
     };
 
-    // إذا لم يكن أدمن، يجب أن يكون المنتج نشطاً ليراه
     if (isAdmin !== 'true') {
       findQuery.isActive = true;
     }
@@ -119,26 +113,20 @@ exports.getProduct = async (req, res, next) => {
   }
 };
 
-// CREATE PRODUCT (المعدلة لدعم رفع الصور والحقول الجديدة)
+// CREATE PRODUCT
 exports.createProduct = async (req, res, next) => {
   try {
     const productData = { ...req.body };
-    
-    // إسناد المعرف الخاص بالمستخدم الذي قام بالإنشاء
     productData.createdBy = req.user.id;
 
-    // ✅ التحقق من وجود ملف صورة مرفوع بواسطة Multer
     if (req.file) {
-      // نخزن المسار الذي سيتعرف عليه السيرفر لاحقاً لعرض الصورة
-      productData.image = req.file.path; // Cloudinary URL
+      productData.image = req.file.path;
     }
 
-    // ✅ معالجة الـ Tags (لأن FormData تحول المصفوفة لنص)
     if (productData.tags && typeof productData.tags === 'string') {
       try {
         productData.tags = JSON.parse(productData.tags);
       } catch (e) {
-        // إذا فشل JSON.parse، نقوم بتقسيم النص يدوياً بواسطة الفاصلة
         productData.tags = productData.tags.split(',').map(t => t.trim()).filter(Boolean);
       }
     }
@@ -150,17 +138,15 @@ exports.createProduct = async (req, res, next) => {
   }
 };
 
-// UPDATE PRODUCT (المعدلة لدعم تحديث الصور والحقول الجديدة)
+// UPDATE PRODUCT
 exports.updateProduct = async (req, res, next) => {
   try {
     let productData = { ...req.body };
 
-    // ✅ إذا تم رفع صورة جديدة، نقوم بتحديث مسار الصورة
     if (req.file) {
-      productData.image = req.file.path; // Cloudinary URL
+      productData.image = req.file.path;
     }
 
-    // ✅ معالجة الـ Tags عند التحديث
     if (productData.tags && typeof productData.tags === 'string') {
       try {
         productData.tags = JSON.parse(productData.tags);
@@ -203,13 +189,13 @@ exports.deleteProduct = async (req, res, next) => {
   }
 };
 
-// ADD REVIEW
-// إضافة تقييم - للمشترين فقط
+// ADD REVIEW ✅ (تم التعديل لحل مشكلة الـ name)
 exports.addReview = async (req, res, next) => {
   try {
     const productId = req.params.id;
     const { rating, comment } = req.body;
 
+    // 1. التحقق من أن المستخدم اشترى المنتج فعلاً
     const hasPurchased = await Order.findOne({
       user: req.user.id,
       status: 'completed',
@@ -224,14 +210,20 @@ exports.addReview = async (req, res, next) => {
     }
 
     const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
     
+    // 2. منع المستخدم من إضافة أكثر من تقييم لنفس المنتج
     if (product.reviews.find(r => r.user.toString() === req.user.id)) {
       return res.status(400).json({ success: false, message: 'You have already reviewed this product.' });
     }
 
+    // 3. حل مشكلة الـ name: نأخذ أي اسم متاح أو نضع "Customer"
+    // جربي req.user.name أو req.user.username حسب الموديل عندك
+    const displayName = req.user.name || req.user.username || 'Customer';
+
     product.reviews.push({
       user: req.user.id,
-      name: req.user.name,
+      name: displayName, // ✅ لن يكون فارغاً بعد الآن
       rating: Number(rating),
       comment
     });
@@ -239,21 +231,25 @@ exports.addReview = async (req, res, next) => {
     product.updateRating();
     await product.save();
 
-    // إرسال إشعار للأدمن
-    await Notification.create({
-      user: product.createdBy, // صاحب المنتج
-      type: 'general',
-      title: 'New Review Received',
-      message: `User ${req.user.name} reviewed ${product.name}`,
-      metadata: { productId: product._id },
-      actionUrl: `/products/${product.slug || product._id}`
-    });
+    // إرسال إشعار (اختياري)
+    try {
+      await Notification.create({
+        user: product.createdBy || req.user.id, 
+        type: 'general',
+        title: 'New Review',
+        message: `${displayName} reviewed ${product.name}`,
+        metadata: { productId: product._id },
+        actionUrl: `/products/${product.slug || product._id}`
+      });
+    } catch (e) { console.log("Notification error ignored"); }
 
-    res.status(201).json({ success: true, message: 'Review added' });
-  } catch (err) { next(err); }
+    res.status(201).json({ success: true, message: 'Review added successfully' });
+  } catch (err) { 
+    next(err); 
+  }
 };
-// حذف تقييم - متاح للأدوار الإدارية
 
+// DELETE REVIEW
 exports.deleteReview = async (req, res, next) => {
   try {
     const { productId, reviewId } = req.params;

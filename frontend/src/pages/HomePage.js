@@ -3,6 +3,7 @@ import { FaUsers, FaBox, FaBolt, FaRocket } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { productAPI } from '../services/api';
 import ProductCard from '../components/common/ProductCard';
+import { useCart } from '../context/CartContext';
 import promoBanner from '../assets/promo-banner.png';
 
 // ─────────────────────────────────────────────
@@ -878,6 +879,129 @@ const StatsStrip = memo(function StatsStrip() {
   );
 });
 
+
+// ─────────────────────────────────────────────
+// FEATURED PRODUCT CARD
+// ─────────────────────────────────────────────
+function FeaturedCard({ product }) {
+  const { addItem } = useCart();
+  const [hovered, setHovered] = useState(false);
+  const isOutOfStock = product.stock === 0 && !product.isUnlimited;
+  const discount = product.discountPercentage ||
+    (product.originalPrice > product.price
+      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+      : 0);
+
+  const imgSrc = product.image
+    ? (product.image.startsWith('http') ? product.image : `${process.env.REACT_APP_API_URL?.replace('/api','') || 'https://zertexkey-production.up.railway.app'}/${product.image}`)
+    : null;
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: '#111f12',
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: `1px solid ${hovered ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.2)'}`,
+        display: 'flex',
+        flexDirection: 'column',
+        width: 200,
+        minWidth: 200,
+        transition: 'border-color 0.25s, transform 0.25s, box-shadow 0.25s',
+        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 16px 40px rgba(0,0,0,0.5)' : '0 4px 16px rgba(0,0,0,0.25)',
+        cursor: 'pointer',
+      }}
+    >
+      {/* Image */}
+      <Link
+        to={`/products/${product._id}`}
+        style={{ display: 'block', position: 'relative', height: 180, flexShrink: 0, overflow: 'hidden', background: '#0d1f0e' }}
+      >
+        <img
+          src={imgSrc || `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(product.name?.[0] || '?')}`}
+          alt={product.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
+          onError={e => { e.target.src = `https://placehold.co/400x300/0d1f0e/22c55e?text=${encodeURIComponent(product.name?.[0] || '?')}`; }}
+        />
+        {/* ⭐ Featured badge */}
+        <div style={{
+          position: 'absolute', top: 10, left: 10,
+          background: 'rgba(10,21,11,0.78)', color: '#f59e0b',
+          fontSize: 11, fontWeight: 700,
+          padding: '3px 9px', borderRadius: 6,
+          border: '1px solid rgba(245,158,11,0.35)',
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>⭐ Featured</div>
+
+        {discount > 0 && (
+          <div style={{
+            position: 'absolute', top: 10, right: 10,
+            background: '#ef4444', color: '#fff',
+            fontSize: 11, fontWeight: 800,
+            padding: '3px 9px', borderRadius: 6,
+          }}>-{discount}%</div>
+        )}
+      </Link>
+
+      {/* Content */}
+      <div style={{ padding: '13px 15px 15px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {(product.platform || product.category) && (
+          <span style={{
+            display: 'inline-block', fontSize: 11, fontWeight: 700,
+            color: '#22c55e', background: 'rgba(34,197,94,0.12)',
+            border: '1px solid rgba(34,197,94,0.25)',
+            padding: '2px 9px', borderRadius: 5, alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif',
+          }}>
+            {product.platform || product.category}
+          </span>
+        )}
+
+        <h3 style={{
+          fontSize: 13.5, fontWeight: 700, color: '#f0fdf4',
+          lineHeight: 1.4, margin: 0,
+          display: '-webkit-box', WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          fontFamily: 'Outfit, sans-serif',
+        }}>{product.name}</h3>
+
+        <div style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e', fontFamily: 'Outfit, sans-serif' }}>
+              ${product.price?.toFixed(2)}
+            </div>
+            {product.originalPrice > product.price && (
+              <div style={{ fontSize: 11, color: '#4a5e4a', textDecoration: 'line-through' }}>
+                ${product.originalPrice?.toFixed(2)}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); addItem(product); }}
+            disabled={isOutOfStock}
+            style={{
+              padding: '8px 16px', borderRadius: 10,
+              background: hovered ? '#22c55e' : 'rgba(34,197,94,0.12)',
+              border: `1px solid ${hovered ? '#22c55e' : 'rgba(34,197,94,0.3)'}`,
+              color: hovered ? '#0a150b' : '#22c55e',
+              fontSize: 12, fontWeight: 700,
+              fontFamily: 'Outfit, sans-serif',
+              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s', whiteSpace: 'nowrap',
+              opacity: isOutOfStock ? 0.4 : 1,
+            }}
+          >
+            {isOutOfStock ? 'Out' : 'Add +'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // HOME PAGE
 // ─────────────────────────────────────────────
@@ -958,14 +1082,9 @@ export default function HomePage() {
                   <div
                     key={p._id}
                     className="hp-product-card"
-                    style={{
-                      width: 168,
-                      minWidth: 168,
-                      flexShrink: 0,
-                      animationDelay: `${index * 80}ms`
-                    }}
+                    style={{ flexShrink: 0, animationDelay: `${index * 80}ms` }}
                   >
-                    <ProductCard product={p} />
+                    <FeaturedCard product={p} />
                   </div>
                 ))
             }
