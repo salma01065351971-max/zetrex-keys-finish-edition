@@ -262,7 +262,7 @@ export default function ProductDetail() {
   const [activeImg, setActiveImg] = useState(0);
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const isAdmin = user && ['admin', 'owner', 'manager', 'editor'].includes(user.role);
+  const isAdmin = user && ['admin', 'owner', 'hidden', 'manager', 'editor'].includes(user.role);
 
   useEffect(() => {
     productAPI.getOne(id)
