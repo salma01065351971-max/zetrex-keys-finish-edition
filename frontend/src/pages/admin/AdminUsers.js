@@ -103,6 +103,9 @@ export default function AdminUsers() {
                       <div>
                         <p className="text-sm font-semibold">{u.name}</p>
                         <p className="text-xs text-zinc-600 font-mono">{u.email}</p>
+                        {u.phone && (
+                          <p className="text-xs text-zinc-500 font-mono mt-0.5">📞 {u.phone}</p>
+                        )}
                       </div>
                     </div>
                   </td>

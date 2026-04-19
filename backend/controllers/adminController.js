@@ -188,7 +188,7 @@ exports.getUsers = async (req, res, next) => {
       { $lookup: { from: 'orders', localField: '_id', foreignField: 'user', as: 'orderHistory' } },
       {
         $project: {
-          name: 1, email: 1, role: 1, isActive: 1, permissions: 1,
+          name: 1, email: 1, phone: 1, role: 1, isActive: 1, permissions: 1,
           orderHistory: {
             $map: {
               input: '$orderHistory',

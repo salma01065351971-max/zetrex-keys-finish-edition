@@ -37,6 +37,13 @@ import AdminFinancials from './pages/admin/AdminFinancials';
 import AdminDiscounts from './pages/admin/AdminDiscounts';
 
 
+// ⬆️ ScrollToTop — يرجع للأعلى عند كل تغيير في الـ route
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+};
+
 // 💬 Chatwoot Widget (كل الصفحات ما عدا /admin)
 const ChatwootScript = () => {
   const location = useLocation();
@@ -223,6 +230,7 @@ const GuestRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <div className="flex flex-col min-h-screen bg-[#050505] overflow-x-hidden">
+      <ScrollToTop />
       <ChatwootScript />
       <Navbar />
       <main className="flex-1 min-w-0">

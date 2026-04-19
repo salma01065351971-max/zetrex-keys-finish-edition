@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true,
-    default: null
+    default: ''
   },
   isGoogleUser: {
     type: Boolean,
@@ -52,10 +52,6 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
 avatar: {
-  type: String,
-  default: ''
-},
-phone: {
   type: String,
   default: ''
 },
