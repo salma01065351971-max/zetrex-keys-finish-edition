@@ -35,6 +35,8 @@ export default function AdminUsers() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
 
@@ -52,6 +54,20 @@ export default function AdminUsers() {
     setSelectedPerms(prev => 
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
+  };
+
+  const handleDeleteUser = async () => {
+    setDeleteLoading(true);
+    try {
+      await adminAPI.deleteUser(deleteTarget._id);
+      toast.success(`${deleteTarget.name} has been permanently deleted`);
+      setDeleteTarget(null);
+      loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -144,6 +160,15 @@ export default function AdminUsers() {
                       >
                         Access
                       </button>
+                      {u._id !== me?._id && (
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="text-xs font-semibold py-2.5 px-5 rounded-xl bg-zinc-800 text-zinc-400 border border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
+                          title="Delete User"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -306,6 +331,54 @@ export default function AdminUsers() {
           </div>
         </div>
       )}
+      {/* --- DELETE MODAL: حذف اليوزر نهائياً --- */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+          <div className="bg-[#0a0a0a] border border-red-500/20 w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5 text-3xl">
+                ⚠️
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Permanent Deletion</h2>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                This action is <span className="text-red-400 font-semibold">irreversible</span>. All data related to this user will be permanently removed from the system.
+              </p>
+            </div>
+
+            <div className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 mb-8 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0">
+                {deleteTarget.name?.[0]?.toUpperCase()}
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-white">{deleteTarget.name}</p>
+                <p className="text-xs text-zinc-600 font-mono">{deleteTarget.email}</p>
+                <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded-md text-zinc-400 font-semibold mt-1 inline-block border border-white/5">{deleteTarget.role}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleteLoading}
+                className="py-4 bg-red-500 text-white rounded-xl font-bold text-xs hover:bg-red-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <> 🗑️ Confirm Delete</>
+                )}
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="py-4 bg-zinc-900 text-zinc-400 rounded-xl font-semibold text-xs border border-white/5 hover:border-white/10 transition-all"
+              >
+                Abort
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* --- PASSWORD MODAL: تغيير باسورد اليوزر --- */}
       {passwordTarget && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">

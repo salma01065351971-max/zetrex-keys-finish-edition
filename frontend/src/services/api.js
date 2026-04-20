@@ -179,6 +179,9 @@ export const adminAPI = {
   getFinancials: (params) => API.get('/admin/financials', { params }),
 
   getLogs: () => API.get('/admin/logs'),
+
+  deleteUser: (id) => API.delete(`/admin/users/${id}`),
+
 };
 
 export const discountAPI = {
