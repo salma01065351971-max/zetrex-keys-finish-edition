@@ -271,7 +271,7 @@ const discountAPI = {
 };
 
 // ── PayPal Form (Sandbox) ─────────────────────────────────────────────────────
-function PayPalForm({ pendingOrderId, finalTotal, onSuccess, onError }) {
+function PayPalForm({ pendingOrderId, setPendingOrderId, finalTotal, items, discountData, discountCode, onSuccess, onError }) {
   if (!pendingOrderId) {
     return (
       <div style={{
@@ -318,10 +318,22 @@ function PayPalForm({ pendingOrderId, finalTotal, onSuccess, onError }) {
             height: 45,
           }}
           createOrder={async () => {
-            // ننشئ PayPal order في الـ backend ونربطه بالـ orderId عندنا
+            // 1. ننشئ الأوردر في الداتابيز أولاً
+            const intentRes = await paymentAPI.createPaymentIntent({
+              items: items.map(i => ({
+                productId: i.product?.toString() || i.productId,
+                quantity: i.quantity,
+              })),
+              method: 'paypal',
+              discountCode: discountData ? discountCode : undefined,
+            });
+            const newOrderId = intentRes.data.orderId;
+            setPendingOrderId(newOrderId);
+
+            // 2. ننشئ PayPal order مرتبط بالأوردر
             const res = await API.post('/payments/paypal/create', {
               amount: finalTotal,
-              orderId: pendingOrderId,
+              orderId: newOrderId,
             });
             return res.data.paypalOrderId;
           }}
@@ -329,9 +341,9 @@ function PayPalForm({ pendingOrderId, finalTotal, onSuccess, onError }) {
             // بعد ما اليوزر يوافق في نافذة PayPal، نعمل capture
             await API.post('/payments/paypal/capture', {
               paypalOrderId: data.orderID,
-              orderId: pendingOrderId,
+              orderId: data.custom_id || pendingOrderId,
             });
-            onSuccess(pendingOrderId);
+            onSuccess(data.custom_id || pendingOrderId);
           }}
           onError={(err) => {
             console.error('PayPal error:', err);
@@ -586,7 +598,11 @@ export default function CheckoutPage() {
                 {/* ✅ PayPal Buttons الحقيقية */}
                 <PayPalForm
                   pendingOrderId={pendingOrderId}
+                  setPendingOrderId={setPendingOrderId}
                   finalTotal={finalTotal}
+                  items={items}
+                  discountData={discountData}
+                  discountCode={discountCode}
                   onSuccess={handlePayPalSuccess}
                   onError={handlePayPalError}
                 />
