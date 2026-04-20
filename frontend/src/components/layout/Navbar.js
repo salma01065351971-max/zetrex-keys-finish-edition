@@ -171,34 +171,133 @@ export default function Navbar() {
             </Link>
           )}
 
+
           {/* MOBILE MENU BUTTON */}
-          <button className="lg:hidden text-[#889679] hover:text-white" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="lg:hidden text-[#889679] hover:text-white p-1" onClick={() => setMenuOpen(true)}>
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
 
         </div>
       </div>
 
-      {/* MOBILE MENU */}
-      {menuOpen && (
-        <div className="lg:hidden bg-[#1e2517] border-t border-[#2a3420] px-4 py-4 space-y-2">
-          <Link to="/" onClick={() => setMenuOpen(false)} className="block text-white py-3 px-4">Home</Link>
-          <Link to="/products" onClick={() => setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Store</Link>
-          <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Wishlist</Link>
-          <Link to="/orders" onClick={() => setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Orders</Link>
-          <Link to="/profile" onClick={() => setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Profile</Link>
-          <Link to="/cart" onClick={() => setMenuOpen(false)} className="block text-[#889679] py-3 px-4">Cart</Link>
-          {!isAuthenticated && (
-            <Link to="/login" className="block bg-[#567245] text-white py-3 px-4 rounded-[8px] text-center">Sign In</Link>
+      {/* OVERLAY */}
+      <div
+        onClick={() => setMenuOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 60,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          opacity: menuOpen ? 1 : 0,
+          pointerEvents: menuOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+
+      {/* SLIDE-IN DRAWER */}
+      <div
+        className="lg:hidden"
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0,
+          width: 270, zIndex: 70,
+          background: '#111a0d',
+          borderLeft: '1px solid #2a3420',
+          boxShadow: '-12px 0 40px rgba(0,0,0,0.6)',
+          display: 'flex', flexDirection: 'column',
+          transform: menuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #2a3420' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:28, height:28, borderRadius:7, background:'#567245', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg style={{ width:14, height:14, marginLeft:1 }} fill="white" viewBox="0 0 20 20">
+                <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
+              </svg>
+            </div>
+            <span style={{ fontWeight:700, fontSize:16, color:'#f5f5f5' }}>ZetrexKeys</span>
+          </div>
+          <button onClick={() => setMenuOpen(false)} style={{ color:'#889679', background:'none', border:'none', cursor:'pointer', padding:4 }}>
+            <svg style={{ width:20, height:20 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* User Info */}
+        {isAuthenticated && (
+          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderBottom:'1px solid #2a3420', background:'#0d1409' }}>
+            <img
+              src={user?.avatar || userDefaultAvatar}
+              alt="avatar"
+              style={{ width:42, height:42, borderRadius:8, objectFit:'cover', border:'1px solid #2a3420', flexShrink:0 }}
+              onError={e => { e.target.src = userDefaultAvatar; }}
+            />
+            <div style={{ minWidth:0 }}>
+              <p style={{ fontSize:14, fontWeight:600, color:'#e8f0e0', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.name}</p>
+              <p style={{ fontSize:11, color:'#4a5a3a', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Nav Links */}
+        <nav style={{ flex:1, overflowY:'auto', padding:'10px 12px' }}>
+          {[
+            { to:'/', label:'Home', d:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+            { to:'/products', label:'Store', d:'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
+            { to:'/cart', label:'Cart', badge: itemCount, d:'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
+            { to:'/wishlist', label:'Wishlist', badge: wishlistCount, d:'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 10-6.364-6.364L12 6.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
+            ...(isAuthenticated ? [
+              { to:'/orders', label:'My Orders', d:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+              { to:'/profile', label:'Profile', d:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+            ] : []),
+          ].map(({ to, label, d, badge }) => (
+            <Link
+              key={to}
+              to={to}
+              onClick={() => setMenuOpen(false)}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px', borderRadius:10, marginBottom:2, textDecoration:'none', color:'#889679', transition:'all 0.18s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='#1e2a17'; e.currentTarget.style.color='#e8f0e0'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#889679'; }}
+            >
+              <svg style={{ width:18, height:18, flexShrink:0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+              </svg>
+              <span style={{ fontSize:14, fontWeight:500, flex:1 }}>{label}</span>
+              {badge > 0 && (
+                <span style={{ background:'#567245', color:'#fff', fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20 }}>{badge}</span>
+              )}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Bottom */}
+        <div style={{ padding:'12px', borderTop:'1px solid #2a3420' }}>
+          {isAuthenticated ? (
+            <button
+              onClick={() => { logout(); setMenuOpen(false); navigate('/'); }}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px', borderRadius:10, background:'none', border:'none', cursor:'pointer', color:'#f87171', transition:'background 0.18s' }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(248,113,113,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background='none'}
+            >
+              <svg style={{ width:18, height:18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span style={{ fontSize:14, fontWeight:500 }}>Log Out</span>
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMenuOpen(false)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', background:'#567245', color:'#fff', padding:'13px', borderRadius:10, textDecoration:'none', fontSize:14, fontWeight:600 }}
+            >
+              Sign In
+            </Link>
           )}
         </div>
-      )}
+      </div>
     </header>
   );
 }

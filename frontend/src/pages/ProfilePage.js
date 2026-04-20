@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../services/api';
+import { authAPI, orderAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 import userDefaultAvatar from '../assets/user.png';
@@ -1164,6 +1164,16 @@ export default function ProfilePage() {
   const { width } = useWindowSize();
   const isMobile = width <= 768;
 
+  const handleTabChange = async (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'orders') {
+      try {
+        const res = await orderAPI.getMyOrders();
+        updateUser({ orders: res.data.orders });
+      } catch {}
+    }
+  };
+
   const cfg        = ROLE_CONFIG[user?.role] || ROLE_CONFIG.user;
   const isHighRole = (ROLE_LEVEL[user?.role] || 0) >= 2;
 
@@ -1298,7 +1308,7 @@ export default function ProfilePage() {
                     const cls = item.soon ? 'disabled' : isActive ? 'active' : 'inactive';
                     return (
                       <button key={item.id}
-                        onClick={() => !item.soon && setActiveTab(item.id)}
+                        onClick={() => !item.soon && handleTabChange(item.id)}
                         className={`nav-btn ${cls} fu${i+1}`}>
                         <svg width="15" height="15" fill="none" viewBox="0 0 24 24"
                           stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8}
@@ -1329,7 +1339,7 @@ export default function ProfilePage() {
                     const cls = item.soon ? 'disabled' : isActive ? 'active' : '';
                     return (
                       <button key={item.id}
-                        onClick={() => !item.soon && setActiveTab(item.id)}
+                        onClick={() => !item.soon && handleTabChange(item.id)}
                         className={`mobile-nav-btn ${cls}`}>
                         <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
                           stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.6}

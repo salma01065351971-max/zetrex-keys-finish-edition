@@ -3,6 +3,7 @@ const DigitalCode = require('../models/DigitalCode');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const Log = require('../models/Log');
 
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res, next) => {
@@ -132,6 +133,18 @@ exports.createProduct = async (req, res, next) => {
     }
 
     const product = await Product.create(productData);
+
+    // ── تسجيل اللوج ──
+    try {
+      await Log.create({
+        adminId:   req.user.id,
+        adminName: req.user.name || req.user.username || 'Admin',
+        action:    'PRODUCT_CREATED',
+        target:    `Product: ${product.name}`,
+        details:   `Price: $${product.price} · Category: ${product.category || 'N/A'}`,
+      });
+    } catch (e) { console.error('Log error:', e); }
+
     res.status(201).json({ success: true, product });
   } catch (err) {
     next(err);
@@ -164,6 +177,17 @@ exports.updateProduct = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    // ── تسجيل اللوج ──
+    try {
+      await Log.create({
+        adminId:   req.user.id,
+        adminName: req.user.name || req.user.username || 'Admin',
+        action:    'PRODUCT_UPDATED',
+        target:    `Product: ${product.name}`,
+        details:   `Updated fields: ${Object.keys(req.body).join(', ')}`,
+      });
+    } catch (e) { console.error('Log error:', e); }
+
     res.json({ success: true, product });
   } catch (err) {
     next(err);
@@ -182,6 +206,17 @@ exports.deleteProduct = async (req, res, next) => {
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
+
+    // ── تسجيل اللوج ──
+    try {
+      await Log.create({
+        adminId:   req.user.id,
+        adminName: req.user.name || req.user.username || 'Admin',
+        action:    'PRODUCT_DELETED',
+        target:    `Product: ${product.name}`,
+        details:   `Product deactivated (soft delete)`,
+      });
+    } catch (e) { console.error('Log error:', e); }
 
     res.json({ success: true, message: 'Product deactivated successfully' });
   } catch (err) {

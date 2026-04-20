@@ -31,6 +31,14 @@ export default function AdminOrders() {
 
     useEffect(() => { loadOrders(); }, [status, page]);
 
+    // ── Auto-refresh كل 15 ثانية لما يجي أوردر جديد ──
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadOrders();
+        }, 15000);
+        return () => clearInterval(interval);
+    }, [status, page]);
+
     const loadOrders = async () => {
         setLoading(true);
         try {

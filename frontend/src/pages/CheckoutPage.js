@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { paymentAPI } from '../services/api';
 import API from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -130,15 +131,6 @@ const STYLES = `
     transform: translateY(-1px);
     box-shadow: 0 8px 24px rgba(99,91,255,0.3);
   }
-  .pay-btn-paypal {
-    background: linear-gradient(135deg, #003087, #009cde);
-    color: white;
-  }
-  .pay-btn-paypal:hover:not(:disabled) {
-    background: linear-gradient(135deg, #003fa8, #00b2ff);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(0,156,222,0.3);
-  }
   .pay-btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
 
   .card-input-group {
@@ -193,6 +185,28 @@ const STYLES = `
     gap: 6px;
     font-size: 11px;
     color: #4a5a3a;
+  }
+
+  .paypal-wrapper {
+    background: rgba(0,48,135,0.05);
+    border: 1px solid rgba(0,156,222,0.15);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .paypal-wrapper .paypal-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .paypal-badges {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: #3a5a7a;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   /* ── Responsive ── */
@@ -256,160 +270,78 @@ const discountAPI = {
   validate: (data) => API.post('/discounts/validate', data),
 };
 
-// ── Stripe Card Form ─────────────────────────────
-function StripeForm({ onSubmit, loading, total }) {
-  const [card, setCard] = useState({
-    number: '', expiry: '', cvc: '', name: ''
-  });
-
-  const formatCardNumber = (val) => {
-    return val.replace(/\D/g, '').slice(0, 16)
-      .replace(/(.{4})/g, '$1 ').trim();
-  };
-
-  const formatExpiry = (val) => {
-    const clean = val.replace(/\D/g, '').slice(0, 4);
-    if (clean.length >= 2) return clean.slice(0, 2) + '/' + clean.slice(2);
-    return clean;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const cleanNumber = card.number.replace(/\s/g, '');
-    if (cleanNumber.length < 16) return toast.error('Please enter a valid card number');
-    if (card.expiry.length < 5)  return toast.error('Please enter a valid expiry date');
-    if (card.cvc.length < 3)     return toast.error('Please enter a valid CVC');
-    if (!card.name.trim())        return toast.error('Please enter the cardholder name');
-    onSubmit(card);
-  };
+// ── PayPal Form (Sandbox) ─────────────────────────────────────────────────────
+function PayPalForm({ pendingOrderId, finalTotal, onSuccess, onError }) {
+  if (!pendingOrderId) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '32px', color: '#4a5a3a', fontSize: 13,
+        flexDirection: 'column', gap: 12,
+      }}>
+        <div style={{
+          width: 28, height: 28,
+          border: '3px solid #009cde', borderTopColor: 'transparent',
+          borderRadius: '50%', animation: 'spin .8s linear infinite',
+        }} />
+        Preparing your order...
+      </div>
+    );
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 fade-up">
-      <div>
-        <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
-          Cardholder Name
-        </label>
-        <input
-          value={card.name}
-          onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
-          placeholder="John Doe"
-          className="co-input"
-        />
-      </div>
-
-      <div>
-        <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
-          Card Number
-        </label>
-        <div className="card-input-group">
-          <div style={{ display:'flex', alignItems:'center', padding:'0 14px' }}>
-            <input
-              value={card.number}
-              onChange={e => setCard(c => ({ ...c, number: formatCardNumber(e.target.value) }))}
-              placeholder="1234 5678 9012 3456"
-              maxLength={19}
-              className="card-field"
-              style={{ padding:'12px 0' }}
-            />
+    <div className="fade-up">
+      <div className="paypal-wrapper">
+        <div className="paypal-info">
+          {/* PayPal Logo */}
+          <svg width="100" height="26" viewBox="0 0 100 26" fill="none">
+            <text x="0" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#003087">Pay</text>
+            <text x="36" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#009cde">Pal</text>
+          </svg>
+          <p style={{ fontSize: 13, color: '#4a6a8a', textAlign: 'center', margin: 0 }}>
+            Sign in to your PayPal account to complete your payment securely
+          </p>
+          <div className="paypal-badges">
+            <span>🔒 Buyer Protection</span>
+            <span>⚡ Instant Transfer</span>
+            <span>🌍 Global</span>
           </div>
         </div>
+
+        {/* PayPal Buttons الحقيقية */}
+        <PayPalButtons
+          style={{
+            layout: 'vertical',
+            color: 'blue',
+            shape: 'rect',
+            label: 'pay',
+            height: 45,
+          }}
+          createOrder={async () => {
+            // ننشئ PayPal order في الـ backend ونربطه بالـ orderId عندنا
+            const res = await API.post('/payments/paypal/create', {
+              amount: finalTotal,
+              orderId: pendingOrderId,
+            });
+            return res.data.paypalOrderId;
+          }}
+          onApprove={async (data) => {
+            // بعد ما اليوزر يوافق في نافذة PayPal، نعمل capture
+            await API.post('/payments/paypal/capture', {
+              paypalOrderId: data.orderID,
+              orderId: pendingOrderId,
+            });
+            onSuccess(pendingOrderId);
+          }}
+          onError={(err) => {
+            console.error('PayPal error:', err);
+            onError('PayPal payment failed. Please try again.');
+          }}
+          onCancel={() => {
+            toast('Payment cancelled. Your order is saved, you can retry.');
+          }}
+        />
       </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        <div>
-          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
-            Expiry Date
-          </label>
-          <input
-            value={card.expiry}
-            onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))}
-            placeholder="MM/YY"
-            maxLength={5}
-            className="co-input"
-          />
-        </div>
-        <div>
-          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#889679', marginBottom:7 }}>
-            CVC
-          </label>
-          <input
-            value={card.cvc}
-            onChange={e => setCard(c => ({ ...c, cvc: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-            placeholder="123"
-            maxLength={4}
-            className="co-input"
-            type="password"
-          />
-        </div>
-      </div>
-
-      <button type="submit" disabled={loading} className="pay-btn pay-btn-stripe" style={{ marginTop:8 }}>
-        {loading ? (
-          <>
-            <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="4" style={{opacity:.25}}/>
-              <path fill="white" d="M4 12a8 8 0 018-8v8H4z" style={{opacity:.75}}/>
-            </svg>
-            Processing...
-          </>
-        ) : (
-          <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Pay ${total.toFixed(2)} with Stripe
-          </>
-        )}
-      </button>
-    </form>
-  );
-}
-
-// ── PayPal Form ──────────────────────────────────
-function PayPalForm({ onSubmit, loading, total }) {
-  return (
-    <div className="fade-up space-y-4">
-      <div style={{
-        background:'rgba(0,48,135,0.08)', border:'1px solid rgba(0,156,222,0.2)',
-        borderRadius:12, padding:'20px',
-        display:'flex', flexDirection:'column', alignItems:'center', gap:12,
-      }}>
-        <svg width="100" height="26" viewBox="0 0 100 26" fill="none">
-          <text x="0" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#003087">Pay</text>
-          <text x="36" y="20" fontFamily="Arial" fontWeight="800" fontSize="22" fill="#009cde">Pal</text>
-        </svg>
-        <p style={{ fontSize:13, color:'#4a6a8a', textAlign:'center', margin:0 }}>
-          You'll be redirected to PayPal to complete your payment securely
-        </p>
-        <div style={{ display:'flex', gap:16, fontSize:11, color:'#3a5a7a' }}>
-          <span>🔒 Buyer Protection</span>
-          <span>⚡ Instant Transfer</span>
-          <span>🌍 Global</span>
-        </div>
-      </div>
-
-      <button
-        onClick={onSubmit}
-        disabled={loading}
-        className="pay-btn pay-btn-paypal"
-      >
-        {loading ? (
-          <>
-            <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="4" style={{opacity:.25}}/>
-              <path fill="white" d="M4 12a8 8 0 018-8v8H4z" style={{opacity:.75}}/>
-            </svg>
-            Redirecting to PayPal...
-          </>
-        ) : (
-          <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Pay ${total.toFixed(2)} with PayPal
-          </>
-        )}
-      </button>
     </div>
   );
 }
@@ -424,11 +356,13 @@ export default function CheckoutPage() {
   const [initLoading, setInitLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // الـ order اللي اتنشأ مسبقاً عشان PayPal يشتغل
+  const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [orderInitLoading, setOrderInitLoading] = useState(false);
 
   // Discount code state
   const [discountCode, setDiscountCode] = useState('');
-  const [discountData, setDiscountData] = useState(null); // { discountAmount, finalAmount, discount }
+  const [discountData, setDiscountData] = useState(null);
   const [discountLoading, setDiscountLoading] = useState(false);
 
   const handleApplyDiscount = async () => {
@@ -448,7 +382,37 @@ export default function CheckoutPage() {
 
   const finalTotal = discountData ? discountData.finalAmount : total;
 
-  // نتحقق بس إن الكارت مش فاضي ونقفل الـ initLoading
+  // ── ننشئ الأوردر مسبقاً قبل ما اليوزر يضغط PayPal ──
+  const initOrder = async () => {
+    if (isEmpty || orderInitLoading) return;
+    setOrderInitLoading(true);
+    try {
+      const intentRes = await paymentAPI.createPaymentIntent({
+        items: items.map(i => ({
+          productId: i.product?.toString() || i.productId,
+          quantity: i.quantity,
+        })),
+        method: 'paypal',
+        discountCode: discountData ? discountCode : undefined,
+      });
+      setPendingOrderId(intentRes.data.orderId);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to initialize order. Please refresh.');
+    } finally {
+      setOrderInitLoading(false);
+    }
+  };
+
+  // نشغّل initOrder لما الصفحة تتحمل أو لما يتغير الـ discount
+  useEffect(() => {
+    if (!isEmpty) {
+      setPendingOrderId(null); // reset لو الـ discount اتغير
+      initOrder();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discountData]);
+
+  // نتحقق بس إن الكارت مش فاضي
   useEffect(() => {
     if (isEmpty) {
       navigate('/cart');
@@ -457,45 +421,16 @@ export default function CheckoutPage() {
     setInitLoading(false);
   }, [isEmpty, navigate]);
 
-  // ── دالة مشتركة بتنشئ الأوردر وتأكده بالـ method الصح ──
-  const processPayment = async (selectedMethod) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setLoading(true);
-
-    try {
-      // ننشئ الأوردر هنا بالـ method الصح اللي اختاره اليوزر
-      const intentRes = await paymentAPI.createPaymentIntent({
-        items: items.map(i => ({
-          productId: i.product?.toString() || i.productId,
-          quantity: i.quantity,
-        })),
-        method: selectedMethod,
-        discountCode: discountData ? discountCode : undefined,
-      });
-
-      const newOrderId = intentRes.data.orderId;
-
-      // نأكد الدفع
-      clearCart();
-      toast.success(
-        'Order placed successfully. Waiting for admin confirmation.'
-      );
-      navigate(`/orders/${newOrderId}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
-      setIsSubmitting(false);
-    }
+  // ── PayPal success handler ──
+  const handlePayPalSuccess = (orderId) => {
+    clearCart();
+    toast.success('🎉 Payment successful! Your order is confirmed.');
+    navigate(`/orders/${orderId}`);
   };
 
-  const handleStripeSubmit = async (_cardData) => {
-    await processPayment('stripe');
-  };
-
-  const handlePayPalSubmit = async () => {
-    await processPayment('paypal');
+  // ── PayPal error handler ──
+  const handlePayPalError = (msg) => {
+    toast.error(msg);
   };
 
   if (initLoading) return (
@@ -525,286 +460,297 @@ export default function CheckoutPage() {
   );
 
   return (
-    <div className="co-root">
-      <style>{STYLES}</style>
-      <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 20px' }}>
+    // ✅ PayPalScriptProvider بيلف الصفحة كلها عشان الـ buttons يشتغلوا
+    <PayPalScriptProvider options={{
+      clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID,
+      currency: 'USD',
+      intent: 'capture',
+    }}>
+      <div className="co-root">
+        <style>{STYLES}</style>
+        <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 20px' }}>
 
-        {/* Header */}
-        <div className="fade-up" style={{ marginBottom:32 }}>
-          <Link to="/cart" style={{
-            display:'inline-flex', alignItems:'center', gap:6,
-            fontSize:13, color:'#4a5a3a', textDecoration:'none',
-            fontFamily:'Outfit,sans-serif', marginBottom:16,
-            transition:'color .2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.color='#889679'}
-            onMouseLeave={e => e.currentTarget.style.color='#4a5a3a'}>
-            ← Back to cart
-          </Link>
-          <h1 style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
-            fontSize:32, color:'#e8f0e0', margin:0 }}>Checkout</h1>
-        </div>
-
-        <div className="co-layout">
-
-          {/* LEFT — Payment */}
-          <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-
-            {/* Step 1 — Payment Method */}
-            <div className="co-glass fade-up" style={{ padding:'24px 28px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-                <div className="step-badge">1</div>
-                <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18,
-                  fontWeight:700, color:'#e8f0e0', margin:0 }}>
-                  Payment Method
-                </h2>
-              </div>
-
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div
-                  className="method-card method-card-disabled"
-                  onClick={(e) => { e.preventDefault(); }}
-                  title="Coming Soon"
-                >
-                  <div className="coming-soon-badge">COMING SOON</div>
-                  <div className="method-radio">
-                    <div className="method-radio-dot" />
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <p style={{ fontFamily:'Outfit,sans-serif', fontWeight:600,
-                        color:'#e8f0e0', fontSize:14, margin:0 }}>Credit / Debit Card</p>
-                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px',
-                        borderRadius:5, background:'rgba(99,91,255,0.12)',
-                        color:'#7c75ff', border:'1px solid rgba(99,91,255,0.2)',
-                        fontFamily:'Rajdhani,sans-serif', letterSpacing:'.06em' }}>
-                        STRIPE
-                      </span>
-                    </div>
-                    <p style={{ fontSize:12, color:'#4a5a3a', margin:'3px 0 0' }}>
-                      Visa, Mastercard, American Express
-                    </p>
-                  </div>
-                  <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-                    {['V', 'M', 'A'].map((c, i) => (
-                      <div key={i} style={{
-                        width:28, height:18, borderRadius:4,
-                        background: i===0?'#1A1F71':i===1?'#252525':'#016FD0',
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:9, fontWeight:800, color:'white', letterSpacing:'.02em'
-                      }}>{c}</div>
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  className={`method-card ${method === 'paypal' ? 'selected' : ''}`}
-                  onClick={() => setMethod('paypal')}
-                >
-                  <div className="method-radio">
-                    <div className="method-radio-dot" />
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <p style={{ fontFamily:'Outfit,sans-serif', fontWeight:600,
-                        color:'#e8f0e0', fontSize:14, margin:0 }}>PayPal</p>
-                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px',
-                        borderRadius:5, background:'rgba(0,48,135,0.15)',
-                        color:'#009cde', border:'1px solid rgba(0,156,222,0.25)',
-                        fontFamily:'Rajdhani,sans-serif', letterSpacing:'.06em' }}>
-                        PAYPAL
-                      </span>
-                    </div>
-                    <p style={{ fontSize:12, color:'#4a5a3a', margin:'3px 0 0' }}>
-                      Pay with your PayPal account
-                    </p>
-                  </div>
-                  <div style={{
-                    display:'flex', alignItems:'center', gap:1,
-                    fontFamily:'Arial', fontWeight:800, fontSize:16,
-                  }}>
-                    <span style={{ color:'#003087' }}>Pay</span>
-                    <span style={{ color:'#009cde' }}>Pal</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2 — Payment Details */}
-            <div className="co-glass" style={{ padding:'24px 28px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-                <div className="step-badge">2</div>
-                <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18,
-                  fontWeight:700, color:'#e8f0e0', margin:0 }}>
-                  PayPal Checkout
-                </h2>
-              </div>
-
-              <PayPalForm
-                onSubmit={handlePayPalSubmit}
-                loading={loading || isSubmitting}
-                total={finalTotal}
-              />
-            </div>
-
-            {/* Security Badges */}
-            <div style={{ display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap' }}>
-              {[
-                { icon:'🔒', text:'256-bit SSL Encryption' },
-                { icon:'⚡', text:'Instant Code Delivery' },
-                { icon:'✅', text:'Verified Seller' },
-              ].map(b => (
-                <span key={b.text} className="security-badge">
-                  <span>{b.icon}</span> {b.text}
-                </span>
-              ))}
-            </div>
+          {/* Header */}
+          <div className="fade-up" style={{ marginBottom:32 }}>
+            <Link to="/cart" style={{
+              display:'inline-flex', alignItems:'center', gap:6,
+              fontSize:13, color:'#4a5a3a', textDecoration:'none',
+              fontFamily:'Outfit,sans-serif', marginBottom:16,
+              transition:'color .2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.color='#889679'}
+              onMouseLeave={e => e.currentTarget.style.color='#4a5a3a'}>
+              ← Back to cart
+            </Link>
+            <h1 style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
+              fontSize:32, color:'#e8f0e0', margin:0 }}>Checkout</h1>
           </div>
 
-          {/* RIGHT — Order Summary */}
-          <div className="co-glass co-summary" style={{ padding:'24px' }}>
-            <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
-              fontSize:18, color:'#e8f0e0', marginBottom:20 }}>
-              Order Summary
-            </h2>
+          <div className="co-layout">
 
-            <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
-              {items.map((item, i) => {
-                return (
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <div style={{ position:'relative', flexShrink:0 }}>
-                      <img
-                        src={getImageUrl(item.image) || `https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`}
-                        alt={item.name}
-                        style={{ width:44, height:44, borderRadius:10, objectFit:'cover',
-                          border:'1px solid #2a3420' }}
-                        onError={e => { e.target.src=`https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`; }}
-                      />
-                      {item.quantity > 1 && (
-                        <span style={{
-                          position:'absolute', top:-6, right:-6,
-                          width:16, height:16, borderRadius:'50%',
-                          background:'#567245', color:'white',
-                          fontSize:9, fontWeight:700,
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                        }}>{item.quantity}</span>
-                      )}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, color:'#e8f0e0', fontWeight:500,
-                        margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {item.name}
-                      </p>
-                      <p style={{ fontSize:11, color:'#4a5a3a', margin:'2px 0 0' }}>
-                        × {item.quantity}
-                      </p>
-                    </div>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#c4d6a1', flexShrink:0 }}>
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            {/* LEFT — Payment */}
+            <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-            <div style={{ height:1, background:'#2a3420', margin:'16px 0' }} />
-
-            {/* Discount Code Input */}
-            <div style={{ marginBottom:14 }}>
-              <div style={{ display:'flex', gap:8 }}>
-                <input
-                  value={discountCode}
-                  onChange={e => { setDiscountCode(e.target.value.toUpperCase()); setDiscountData(null); }}
-                  placeholder="Discount code"
-                  disabled={!!discountData}
-                  style={{
-                    flex:1, background:'#1a1f14', border:`1px solid ${discountData ? 'rgba(34,197,94,0.4)' : '#2a3420'}`,
-                    borderRadius:10, padding:'10px 12px', color:'#e8f0e0',
-                    fontSize:13, fontFamily:'Outfit,sans-serif', outline:'none',
-                    fontWeight:600, letterSpacing:'.05em',
-                  }}
-                />
-                {discountData ? (
-                  <button
-                    onClick={() => { setDiscountData(null); setDiscountCode(''); }}
-                    style={{
-                      background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.3)',
-                      borderRadius:10, padding:'10px 14px', color:'#f87171',
-                      fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
-                    }}
-                  >Remove</button>
-                ) : (
-                  <button
-                    onClick={handleApplyDiscount}
-                    disabled={discountLoading || !discountCode.trim()}
-                    style={{
-                      background:'#567245', border:'none', borderRadius:10,
-                      padding:'10px 16px', color:'white',
-                      fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
-                      opacity: discountLoading || !discountCode.trim() ? 0.5 : 1,
-                    }}
-                  >{discountLoading ? '...' : 'Apply'}</button>
-                )}
-              </div>
-              {discountData && (
-                <p style={{ fontSize:11, color:'#22c55e', margin:'6px 0 0', fontWeight:600 }}>
-                  ✅ {discountData.discount.description || discountData.discount.code} applied
-                </p>
-              )}
-            </div>
-
-            <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
-              <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:13, color:'#4a5a3a' }}>Subtotal</span>
-                <span style={{ fontSize:13, color:'#e8f0e0' }}>${total.toFixed(2)}</span>
-              </div>
-              {discountData && (
-                <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:13, color:'#22c55e' }}>Discount</span>
-                  <span style={{ fontSize:13, color:'#22c55e', fontWeight:700 }}>-${discountData.discountAmount.toFixed(2)}</span>
+              {/* Step 1 — Payment Method */}
+              <div className="co-glass fade-up" style={{ padding:'24px 28px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
+                  <div className="step-badge">1</div>
+                  <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18,
+                    fontWeight:700, color:'#e8f0e0', margin:0 }}>
+                    Payment Method
+                  </h2>
                 </div>
-              )}
-              <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:13, color:'#4a5a3a' }}>Tax</span>
-                <span style={{ fontSize:13, color:'#22c55e' }}>$0.00</span>
+
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {/* Stripe - Coming Soon */}
+                  <div
+                    className="method-card method-card-disabled"
+                    onClick={(e) => { e.preventDefault(); }}
+                    title="Coming Soon"
+                  >
+                    <div className="coming-soon-badge">COMING SOON</div>
+                    <div className="method-radio">
+                      <div className="method-radio-dot" />
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <p style={{ fontFamily:'Outfit,sans-serif', fontWeight:600,
+                          color:'#e8f0e0', fontSize:14, margin:0 }}>Credit / Debit Card</p>
+                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px',
+                          borderRadius:5, background:'rgba(99,91,255,0.12)',
+                          color:'#7c75ff', border:'1px solid rgba(99,91,255,0.2)',
+                          fontFamily:'Rajdhani,sans-serif', letterSpacing:'.06em' }}>
+                          STRIPE
+                        </span>
+                      </div>
+                      <p style={{ fontSize:12, color:'#4a5a3a', margin:'3px 0 0' }}>
+                        Visa, Mastercard, American Express
+                      </p>
+                    </div>
+                    <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                      {['V', 'M', 'A'].map((c, i) => (
+                        <div key={i} style={{
+                          width:28, height:18, borderRadius:4,
+                          background: i===0?'#1A1F71':i===1?'#252525':'#016FD0',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:9, fontWeight:800, color:'white', letterSpacing:'.02em'
+                        }}>{c}</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* PayPal */}
+                  <div
+                    className={`method-card ${method === 'paypal' ? 'selected' : ''}`}
+                    onClick={() => setMethod('paypal')}
+                  >
+                    <div className="method-radio">
+                      <div className="method-radio-dot" />
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <p style={{ fontFamily:'Outfit,sans-serif', fontWeight:600,
+                          color:'#e8f0e0', fontSize:14, margin:0 }}>PayPal</p>
+                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px',
+                          borderRadius:5, background:'rgba(0,48,135,0.15)',
+                          color:'#009cde', border:'1px solid rgba(0,156,222,0.25)',
+                          fontFamily:'Rajdhani,sans-serif', letterSpacing:'.06em' }}>
+                          PAYPAL
+                        </span>
+                      </div>
+                      <p style={{ fontSize:12, color:'#4a5a3a', margin:'3px 0 0' }}>
+                        Pay with your PayPal account
+                      </p>
+                    </div>
+                    <div style={{
+                      display:'flex', alignItems:'center', gap:1,
+                      fontFamily:'Arial', fontWeight:800, fontSize:16,
+                    }}>
+                      <span style={{ color:'#003087' }}>Pay</span>
+                      <span style={{ color:'#009cde' }}>Pal</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 — PayPal Checkout */}
+              <div className="co-glass" style={{ padding:'24px 28px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
+                  <div className="step-badge">2</div>
+                  <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18,
+                    fontWeight:700, color:'#e8f0e0', margin:0 }}>
+                    PayPal Checkout
+                  </h2>
+                </div>
+
+                {/* ✅ PayPal Buttons الحقيقية */}
+                <PayPalForm
+                  pendingOrderId={pendingOrderId}
+                  finalTotal={finalTotal}
+                  onSuccess={handlePayPalSuccess}
+                  onError={handlePayPalError}
+                />
+              </div>
+
+              {/* Security Badges */}
+              <div style={{ display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap' }}>
+                {[
+                  { icon:'🔒', text:'256-bit SSL Encryption' },
+                  { icon:'⚡', text:'Instant Code Delivery' },
+                  { icon:'✅', text:'Verified Seller' },
+                ].map(b => (
+                  <span key={b.text} className="security-badge">
+                    <span>{b.icon}</span> {b.text}
+                  </span>
+                ))}
               </div>
             </div>
 
-            <div style={{ height:1, background:'#2a3420', marginBottom:16 }} />
+            {/* RIGHT — Order Summary */}
+            <div className="co-glass co-summary" style={{ padding:'24px' }}>
+              <h2 style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
+                fontSize:18, color:'#e8f0e0', marginBottom:20 }}>
+                Order Summary
+              </h2>
 
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-              <span style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:700,
-                fontSize:16, color:'#e8f0e0' }}>Total</span>
-              <div style={{ textAlign:'right' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
+                {items.map((item, i) => {
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ position:'relative', flexShrink:0 }}>
+                        <img
+                          src={getImageUrl(item.image) || `https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`}
+                          alt={item.name}
+                          style={{ width:44, height:44, borderRadius:10, objectFit:'cover',
+                            border:'1px solid #2a3420' }}
+                          onError={e => { e.target.src=`https://placehold.co/44x44/161b11/567245?text=${(item.name||'?')[0]}`; }}
+                        />
+                        {item.quantity > 1 && (
+                          <span style={{
+                            position:'absolute', top:-6, right:-6,
+                            width:16, height:16, borderRadius:'50%',
+                            background:'#567245', color:'white',
+                            fontSize:9, fontWeight:700,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                          }}>{item.quantity}</span>
+                        )}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, color:'#e8f0e0', fontWeight:500,
+                          margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {item.name}
+                        </p>
+                        <p style={{ fontSize:11, color:'#4a5a3a', margin:'2px 0 0' }}>
+                          × {item.quantity}
+                        </p>
+                      </div>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#c4d6a1', flexShrink:0 }}>
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ height:1, background:'#2a3420', margin:'16px 0' }} />
+
+              {/* Discount Code Input */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input
+                    value={discountCode}
+                    onChange={e => { setDiscountCode(e.target.value.toUpperCase()); setDiscountData(null); }}
+                    placeholder="Discount code"
+                    disabled={!!discountData}
+                    style={{
+                      flex:1, background:'#1a1f14', border:`1px solid ${discountData ? 'rgba(34,197,94,0.4)' : '#2a3420'}`,
+                      borderRadius:10, padding:'10px 12px', color:'#e8f0e0',
+                      fontSize:13, fontFamily:'Outfit,sans-serif', outline:'none',
+                      fontWeight:600, letterSpacing:'.05em',
+                    }}
+                  />
+                  {discountData ? (
+                    <button
+                      onClick={() => { setDiscountData(null); setDiscountCode(''); }}
+                      style={{
+                        background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.3)',
+                        borderRadius:10, padding:'10px 14px', color:'#f87171',
+                        fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
+                      }}
+                    >Remove</button>
+                  ) : (
+                    <button
+                      onClick={handleApplyDiscount}
+                      disabled={discountLoading || !discountCode.trim()}
+                      style={{
+                        background:'#567245', border:'none', borderRadius:10,
+                        padding:'10px 16px', color:'white',
+                        fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
+                        opacity: discountLoading || !discountCode.trim() ? 0.5 : 1,
+                      }}
+                    >{discountLoading ? '...' : 'Apply'}</button>
+                  )}
+                </div>
                 {discountData && (
-                  <p style={{ fontSize:12, color:'#4a5a3a', margin:'0 0 2px',
-                    textDecoration:'line-through' }}>${total.toFixed(2)}</p>
+                  <p style={{ fontSize:11, color:'#22c55e', margin:'6px 0 0', fontWeight:600 }}>
+                    ✅ {discountData.discount.description || discountData.discount.code} applied
+                  </p>
                 )}
-                <span style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
-                  fontSize:28, color: discountData ? '#22c55e' : '#e8f0e0' }}>
-                  ${finalTotal.toFixed(2)}
-                </span>
               </div>
-            </div>
 
-            <div style={{
-              background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.15)',
-              borderRadius:10, padding:'12px 14px',
-            }}>
-              <p style={{ fontSize:11, fontWeight:600, color:'#22c55e',
-                margin:'0 0 6px', display:'flex', alignItems:'center', gap:6 }}>
-                ⚡ What happens after payment?
-              </p>
-              <ul style={{ margin:0, padding:'0 0 0 14px', fontSize:11,
-                color:'#4a6a4a', lineHeight:1.8 }}>
-                <li>Digital codes sent instantly to your email</li>
-                <li>Order saved in your account</li>
-                <li>Copy codes from your orders page</li>
-              </ul>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:13, color:'#4a5a3a' }}>Subtotal</span>
+                  <span style={{ fontSize:13, color:'#e8f0e0' }}>${total.toFixed(2)}</span>
+                </div>
+                {discountData && (
+                  <div style={{ display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:13, color:'#22c55e' }}>Discount</span>
+                    <span style={{ fontSize:13, color:'#22c55e', fontWeight:700 }}>-${discountData.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:13, color:'#4a5a3a' }}>Tax</span>
+                  <span style={{ fontSize:13, color:'#22c55e' }}>$0.00</span>
+                </div>
+              </div>
+
+              <div style={{ height:1, background:'#2a3420', marginBottom:16 }} />
+
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+                <span style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:700,
+                  fontSize:16, color:'#e8f0e0' }}>Total</span>
+                <div style={{ textAlign:'right' }}>
+                  {discountData && (
+                    <p style={{ fontSize:12, color:'#4a5a3a', margin:'0 0 2px',
+                      textDecoration:'line-through' }}>${total.toFixed(2)}</p>
+                  )}
+                  <span style={{ fontFamily:'Rajdhani,sans-serif', fontWeight:800,
+                    fontSize:28, color: discountData ? '#22c55e' : '#e8f0e0' }}>
+                    ${finalTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{
+                background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.15)',
+                borderRadius:10, padding:'12px 14px',
+              }}>
+                <p style={{ fontSize:11, fontWeight:600, color:'#22c55e',
+                  margin:'0 0 6px', display:'flex', alignItems:'center', gap:6 }}>
+                  ⚡ What happens after payment?
+                </p>
+                <ul style={{ margin:0, padding:'0 0 0 14px', fontSize:11,
+                  color:'#4a6a4a', lineHeight:1.8 }}>
+                  <li>Digital codes sent instantly to your email</li>
+                  <li>Order saved in your account</li>
+                  <li>Copy codes from your orders page</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </PayPalScriptProvider>
   );
 }

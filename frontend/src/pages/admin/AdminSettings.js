@@ -71,7 +71,7 @@ export default function AdminSettings() {
     }
   }, []);
 
-  /* ── Fetch logs ───────────────────────────────────────────────────────── */
+  /* ── Fetch logs (مع spinner — للأول مرة وزر Refresh) ── */
   const fetchLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
@@ -84,8 +84,31 @@ export default function AdminSettings() {
     }
   }, []);
 
+  /* ── Silent refresh بدون spinner — للـ polling بس ── */
+  const silentRefreshLogs = useCallback(async () => {
+    try {
+      const res = await adminAPI.getLogs();
+      if (res.data.success) {
+        setLogs(prev => {
+          const prevIds = prev.map(l => l._id).join(',');
+          const nextIds = res.data.logs.map(l => l._id).join(',');
+          // مترندرش لو البيانات نفسها
+          if (prevIds === nextIds) return prev;
+          return res.data.logs;
+        });
+      }
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
   useEffect(() => { if (activeTab === 'logs') fetchLogs(); }, [activeTab, fetchLogs]);
+
+  // ── Auto-refresh كل 20 ثانية بدون إعادة رسم لو مفيش لوجز جديدة ──
+  useEffect(() => {
+    if (activeTab !== 'logs') return;
+    const interval = setInterval(silentRefreshLogs, 20000);
+    return () => clearInterval(interval);
+  }, [activeTab, silentRefreshLogs]);
 
   /* ── Toggle maintenance ───────────────────────────────────────────────── */
   const toggleMaintenance = async () => {
