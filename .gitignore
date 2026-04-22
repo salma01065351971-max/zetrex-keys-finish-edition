@@ -32,3 +32,5 @@ backend/.env
 frontend/.env
 backend/build/
 frontend/build/
+.vercel
+.env*.local

@@ -25,21 +25,37 @@ echo ""
 
 # Read backend .env file and set variables
 if [ -f "backend/.env" ]; then
-    while IFS='=' read -r key value; do
+    while IFS= read -r line; do
         # Skip comments and empty lines
-        [[ $key =~ ^#.*$ ]] && continue
+        [[ $line =~ ^#.*$ ]] && continue
+        [[ -z $line ]] && continue
+        
+        # Split on first = to get key and value
+        key="${line%%=*}"
+        value="${line#*=}"
+        
+        # Skip if key is empty
         [[ -z $key ]] && continue
+        
+        # Remove inline comments from value
+        value=$(echo "$value" | sed 's/ #.*$//')
         
         # Remove surrounding quotes if present
         value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         
-        # Set environment variable for all environments (production, preview, development)
-        echo "Setting: $key"
-        vercel env add "$key" <<< "$value
-production
-preview
-development
-y" &> /dev/null || echo "  ⚠️  Failed to set $key"
+        # Skip if value is empty after processing
+        [[ -z $value ]] && continue
+        
+        # Remove existing variable if it exists, then add new value
+        echo "Removing existing $key (if exists)..."
+        vercel env rm "$key" production --yes &> /dev/null
+        vercel env rm "$key" development --yes &> /dev/null
+        
+        # Set environment variable for production and development environments
+        echo "Setting: $key for production"
+        vercel env add "$key" production --value "$value"
+        echo "Setting: $key for development"
+        vercel env add "$key" development --value "$value"
     done < backend/.env
 else
     echo "❌ backend/.env file not found!"
@@ -52,21 +68,37 @@ echo ""
 
 # Read frontend .env file and set variables
 if [ -f "frontend/.env" ]; then
-    while IFS='=' read -r key value; do
+    while IFS= read -r line; do
         # Skip comments and empty lines
-        [[ $key =~ ^#.*$ ]] && continue
+        [[ $line =~ ^#.*$ ]] && continue
+        [[ -z $line ]] && continue
+        
+        # Split on first = to get key and value
+        key="${line%%=*}"
+        value="${line#*=}"
+        
+        # Skip if key is empty
         [[ -z $key ]] && continue
+        
+        # Remove inline comments from value
+        value=$(echo "$value" | sed 's/ #.*$//')
         
         # Remove surrounding quotes if present
         value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         
-        # Set environment variable for all environments
-        echo "Setting: $key"
-        vercel env add "$key" <<< "$value
-production
-preview
-development
-y" &> /dev/null || echo "  ⚠️  Failed to set $key"
+        # Skip if value is empty after processing
+        [[ -z $value ]] && continue
+        
+        # Remove existing variable if it exists, then add new value
+        echo "Removing existing $key (if exists)..."
+        vercel env rm "$key" production --yes &> /dev/null
+        vercel env rm "$key" development --yes &> /dev/null
+        
+        # Set environment variable for production and development environments
+        echo "Setting: $key for production"
+        vercel env add "$key" production --value "$value"
+        echo "Setting: $key for development"
+        vercel env add "$key" development --value "$value"
     done < frontend/.env
 else
     echo "⚠️  frontend/.env file not found!"
