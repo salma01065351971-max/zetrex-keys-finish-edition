@@ -32,5 +32,7 @@ backend/.env
 frontend/.env
 backend/build/
 frontend/build/
+# Allow backend/public for Hostinger deployment
+!backend/public/
 .vercel
 .env*.local

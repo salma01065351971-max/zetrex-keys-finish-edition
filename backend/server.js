@@ -15,8 +15,9 @@ const app = express();
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
-  'https://zertexkey-2orq.vercel.app'
-].map(url => url?.replace(/\/$/, "")); // كود إضافي بيمسح أي / في آخر الرابط أوتوماتيكياً
+  'https://zertexkey-2orq.vercel.app',
+  process.env.HOSTINGER_URL // Add Hostinger domain from environment
+].filter(Boolean).map(url => url?.replace(/\/$/, "")); // كود إضافي بيمسح أي / في آخر الرابط أوتوماتيكياً
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -53,6 +54,9 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 // ─── Static Files (Uploaded Images) ─────────────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// ─── Static Files (React Frontend Build) ───────────────────────────────────
+app.use(express.static(path.join(__dirname, "public")));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/users',    require('./routes/userRoutes'));
@@ -86,9 +90,15 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ success: false, maintenanceMode: false });
   }
 });
-// ─── 404 Handler ──────────────────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
+
+// ─── Client-Side Routing Fallback (React) ─────────────────────────────────────
+app.get('*', (req, res) => {
+  // Serve index.html for all non-API routes to support client-side routing
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
+  }
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
