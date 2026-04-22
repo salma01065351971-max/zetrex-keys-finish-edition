@@ -16,8 +16,9 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
   'https://zertexkey-2orq.vercel.app',
+  'https://zetrexkeys.codexify.net', // Explicit Hostinger domain
   process.env.HOSTINGER_URL // Add Hostinger domain from environment
-].filter(Boolean).map(url => url?.replace(/\/$/, "")); // كود إضافي بيمسح أي / في آخر الرابط أوتوماتيكياً
+].filter(Boolean).map(url => url?.replace(/\/$/, "")); // كود إضافي بيمسح أي / في آخر الرابط أوتوماتيكاً
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -26,8 +27,8 @@ app.use(cors({
 
     const cleanOrigin = origin.replace(/\/$/, ""); // مسح السلاش من الرابط اللي جاي من المتصفح
 
-    // 2. السماح لو الرابط في القائمة أو ينتهي بـ vercel.app
-    if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith('.vercel.app')) {
+    // 2. السماح لو الرابط في القائمة أو ينتهي بـ vercel.app أو codexify.net
+    if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith('.vercel.app') || cleanOrigin.endsWith('.codexify.net')) {
       callback(null, true);
     } else {
       // السطر ده مهم جداً: هيطبع لك في Railway Logs الرابط المرفوض بالظبط
